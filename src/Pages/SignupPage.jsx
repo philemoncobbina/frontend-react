@@ -1,6 +1,6 @@
 
 import SignupForm from '@/layouts/Signup/SignupForm'
-import { GoogleOAuthProvider, GoogleLogin } from '@react-oauth/google';
+import { GoogleOAuthProvider } from '@react-oauth/google';
 
 const SignupPage = () => {
   return (

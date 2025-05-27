@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import  { useState } from 'react';
 import { Eye, EyeOff, X, User, GraduationCap, Mail, Hash } from 'lucide-react';
 import { login, useGoogleSignInHandler } from "../../Services/Login";
 import { loginStudent } from '../../Services/studentApi';
@@ -353,7 +353,7 @@ const LoginForm = () => {
           {/* Sign Up Link (Regular Login Only) */}
           {loginType === 'regular' && (
             <p className="mt-8 text-center text-gray-600">
-              Don't have an account?{' '}
+              Don't have an account?
               <a href="/signup" className="text-blue-600 hover:text-blue-700 font-semibold transition-colors">
                 Sign up
               </a>
