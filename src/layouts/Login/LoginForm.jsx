@@ -4,7 +4,7 @@ import { login, useGoogleSignInHandler } from "../../Services/Login";
 import { loginStudent } from '../../Services/studentApi';
 import { useNavigate } from 'react-router-dom';
 
-const UnifiedLogin = () => {
+const LoginForm = () => {
   const navigate = useNavigate();
   const [loginType, setLoginType] = useState('regular'); // 'regular' or 'student'
   const [showPassword, setShowPassword] = useState(false);
@@ -373,4 +373,4 @@ const UnifiedLogin = () => {
   );
 };
 
-export default UnifiedLogin;
+export default LoginForm;
