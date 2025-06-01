@@ -218,7 +218,7 @@ const HomeHero = () => {
               </div>
             </div>
             <h1 className="text-4xl font-bold tracking-tight text-gray-900 sm:text-6xl">
-              Inspiring Excellence, Shaping Tomorrow's Leaders
+              Inspiringggg Excellence, Shaping Tomorrow's Leaders
             </h1>
             <p className="mt-4 text-xl text-gray-500">
               At Ridoana Comprehensive School, we provide a nurturing and dynamic learning environment where every student can thrive. Explore our diverse range of programs, dedicated faculty, and state-of-the-art facilities that support academic excellence and personal growth.
