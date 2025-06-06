@@ -46,7 +46,7 @@ interface UserDetails {
   date_joined: string;
   role: string;
   is_google_account: boolean;
-  index_number: string | null;
+  index_number: string ;
   class_name: string | null;
   verification_code: string | null;
 }

@@ -113,7 +113,7 @@ export default function SchoolDashboard() {
         const user = await getCurrentUser();
         if (user) {
           setUserData({
-            first_name: user.first_name || '',
+            first_name: (user.first_name + ' ' + user.last_name) || '',
             class_name: user.class_name || ''
           });
         } else {
