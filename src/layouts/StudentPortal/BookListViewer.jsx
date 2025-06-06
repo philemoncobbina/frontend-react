@@ -1,45 +1,110 @@
 import React, { useState, useEffect } from 'react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Calendar, BookOpen, TrendingUp, Award, AlertTriangle, FileText, Book, DollarSign, Check, X, Layers } from 'lucide-react';
 import { BookListService } from '../../Services/BookListService';
-import { Book, Layers, Calendar, FileText, Clock, DollarSign, Check, X, ChevronDown, ChevronUp } from 'lucide-react';
+
+// Error Boundary Component
+class ErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+
+  static getDerivedStateFromError(error) {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error, errorInfo) {
+    console.error("Error in component:", error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="p-8 flex flex-col items-center justify-center text-center">
+          <AlertTriangle className="h-16 w-16 text-amber-500 mb-4" />
+          <h2 className="text-2xl font-bold mb-2">Something went wrong</h2>
+          <p className="text-gray-600 mb-4">
+            We couldn't load your book lists at this time. Please try again later.
+          </p>
+          <pre className="bg-gray-100 p-4 rounded text-xs text-left overflow-auto max-w-full mb-4">
+            {this.state.error && this.state.error.toString()}
+          </pre>
+          <button 
+            className="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700"
+            onClick={() => this.setState({ hasError: false })}
+          >
+            Try Again
+          </button>
+        </div>
+      );
+    }
+
+    return this.props.children;
+  }
+}
 
 const BookListViewer = () => {
+  // State management
+  const [activeTab, setActiveTab] = useState('current');
   const [currentBooklists, setCurrentBooklists] = useState([]);
   const [previousClassBooklists, setPreviousClassBooklists] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState({
+    current: false,
+    previous: false,
+  });
   const [error, setError] = useState(null);
-  const [activeTab, setActiveTab] = useState('current');
-  const [expandedList, setExpandedList] = useState(null);
 
+  // Load data on component mount
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        setLoading(true);
-        
-        const currentListsResponse = await BookListService.getCurrentClassBooklists();
-        setCurrentBooklists(currentListsResponse.data || []);
-        
-        const previousClassesResponse = await BookListService.getPreviousClassesBooklists();
-        setPreviousClassBooklists(previousClassesResponse.data || []);
-        
-        setLoading(false);
-      } catch (err) {
-        setError('Failed to load booklists. Please try again later.');
-        setLoading(false);
-        console.error('Error fetching booklists:', err);
-      }
-    };
-
-    fetchData();
+    fetchCurrentBooklists();
+    fetchPreviousClassBooklists();
   }, []);
 
-  const toggleExpandList = (id) => {
-    if (expandedList === id) {
-      setExpandedList(null);
-    } else {
-      setExpandedList(id);
+  // Fetch current class booklists
+  const fetchCurrentBooklists = async () => {
+    setLoading(prev => ({ ...prev, current: true }));
+    setError(null);
+    
+    try {
+      const response = await BookListService.getCurrentClassBooklists();
+      setCurrentBooklists(Array.isArray(response.data) ? response.data : []);
+    } catch (err) {
+      setError('Failed to fetch current class book lists');
+      console.error('Error fetching current booklists:', err);
+      setCurrentBooklists([]);
+    } finally {
+      setLoading(prev => ({ ...prev, current: false }));
     }
   };
 
+  // Fetch previous class booklists
+  const fetchPreviousClassBooklists = async () => {
+    setLoading(prev => ({ ...prev, previous: true }));
+    setError(null);
+    
+    try {
+      const response = await BookListService.getPreviousClassesBooklists();
+      setPreviousClassBooklists(Array.isArray(response.data) ? response.data : []);
+    } catch (err) {
+      setError('Failed to fetch previous class book lists');
+      console.error('Error fetching previous booklists:', err);
+      setPreviousClassBooklists([]);
+    } finally {
+      setLoading(prev => ({ ...prev, previous: false }));
+    }
+  };
+
+  // Handle tab change
+  const handleTabChange = (value) => {
+    setActiveTab(value);
+  };
+
+  // Format currency
   const formatCurrency = (amount) => {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
@@ -47,270 +112,328 @@ const BookListViewer = () => {
     }).format(amount || 0);
   };
 
-  if (loading) {
+  // Calculate overall statistics (placeholder implementation)
+  const calculateOverallStatistics = (booklists) => {
+    const totalLists = booklists.length;
+    const totalItems = booklists.reduce((sum, list) => sum + (list.items?.length || 0), 0);
+    const totalCost = booklists.reduce((sum, list) => sum + (list.calculated_total_price || list.total_price || 0), 0);
+    
+    return {
+      totalLists,
+      totalItems,
+      totalCost
+    };
+  };
+
+  // Render booklist card - Made fully responsive
+  const renderBooklistCard = (booklist) => {
+    if (!booklist) return null;
+    
     return (
-      <div className="flex justify-center items-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-500"></div>
-      </div>
-    );
-  }
+      <Card key={booklist.id} className="mb-4 border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
+        <CardHeader className="pb-3 px-3 sm:px-6">
+          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-3 sm:gap-0">
+            <div className="flex-1 min-w-0">
+              <CardTitle className="text-base sm:text-lg font-semibold break-words">
+                {booklist.title || 'Untitled Booklist'}
+              </CardTitle>
+              <CardDescription className="flex flex-col xs:flex-row xs:items-center gap-1 xs:gap-2 mt-1 text-gray-500 text-sm">
+                <div className="flex items-center gap-1">
+                  <Calendar className="h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0" />
+                  <span className="text-xs sm:text-sm">
+                    Academic Year: {booklist.academic_year || 'Not specified'}
+                  </span>
+                </div>
+                <span className="hidden xs:inline text-gray-300">•</span>
+                <div className="flex items-center gap-1">
+                  <FileText className="h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0" />
+                  <span className="text-xs sm:text-sm">
+                    Class: {booklist.class_name_display || booklist.class_name || 'N/A'}
+                  </span>
+                </div>
+                {booklist.publish_date && (
+                  <>
+                    <span className="hidden xs:inline text-gray-300">•</span>
+                    <span className="text-xs sm:text-sm">
+                      Published: {new Date(booklist.publish_date).toLocaleDateString()}
+                    </span>
+                  </>
+                )}
+              </CardDescription>
+            </div>
+            <div className="flex items-center gap-2 self-start sm:self-auto flex-shrink-0">
+              <Badge className="bg-green-100 text-green-800 uppercase text-xs px-2 sm:px-3 py-1">
+                {formatCurrency(booklist.calculated_total_price || booklist.total_price || 0)}
+              </Badge>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="px-3 sm:px-6">
+          <div className="space-y-4">
+            {/* Description */}
+            {booklist.description && (
+              <div className="text-sm text-gray-600 p-3 bg-gray-50 rounded-lg">
+                {booklist.description}
+              </div>
+            )}
 
-  if (error) {
-    return (
-      <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-md mx-3 sm:mx-6 my-4">
-        <p className="text-sm sm:text-base">{error}</p>
-      </div>
-    );
-  }
-
-  const renderBooklistItems = (items) => {
-    if (!items || !Array.isArray(items)) {
-      return (
-        <div className="mt-4 bg-gray-50 p-4 rounded-md text-gray-500 text-sm">
-          No items available
-        </div>
-      );
-    }
-
-    // Mobile Card View
-    const MobileView = () => (
-      <div className="mt-4 space-y-3 sm:hidden">
-        {items.map((item) => (
-          <div key={item.id} className="bg-gray-50 rounded-lg p-4 border border-gray-200">
-            <div className="flex justify-between items-start mb-2">
-              <div className="flex-1 min-w-0">
-                <h4 className="font-medium text-gray-900 text-sm truncate">{item.name || 'Unnamed Item'}</h4>
-                {item.description && (
-                  <p className="text-xs text-gray-500 mt-1 line-clamp-2">{item.description}</p>
+            {/* Book Items */}
+            <div>
+              <h4 className="font-semibold mb-3 flex items-center gap-2 text-indigo-700 text-sm sm:text-base">
+                <BookOpen className="h-4 w-4 flex-shrink-0" />
+                Book Items ({booklist.items?.length || 0})
+              </h4>
+              <div className="grid gap-2">
+                {booklist.items && booklist.items.length > 0 ? (
+                  booklist.items.map((item) => (
+                    <div key={item.id || `item-${Math.random()}`} 
+                      className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-3 bg-gray-50 hover:bg-gray-100 rounded-lg transition-colors gap-2 sm:gap-4">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <h5 className="font-medium text-sm sm:text-base break-words flex-1">
+                            {item.name || 'Unnamed Item'}
+                          </h5>
+                          <div className="flex-shrink-0">
+                            {item.is_required ? 
+                              <Check className="text-green-500 h-4 w-4" /> : 
+                              <X className="text-red-500 h-4 w-4" />
+                            }
+                          </div>
+                        </div>
+                        {item.description && (
+                          <p className="text-xs sm:text-sm text-gray-600 mt-1 break-words">
+                            {item.description}
+                          </p>
+                        )}
+                        <div className="text-xs sm:text-sm text-gray-600 mt-1 flex flex-col xs:flex-row xs:items-center gap-1 xs:gap-2">
+                          <span>Price: {formatCurrency(item.price || 0)}</span>
+                          <span className="hidden xs:inline text-gray-300">•</span>
+                          <span>Qty: {item.quantity || 0}</span>
+                          <span className="hidden xs:inline text-gray-300">•</span>
+                          <span className={item.is_required ? 'text-green-600 font-medium' : 'text-red-600'}>
+                            {item.is_required ? 'Required' : 'Optional'}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="flex items-center justify-between sm:justify-end sm:flex-col sm:text-right gap-2 sm:gap-1">
+                        <div className="font-bold text-lg sm:text-xl text-indigo-700">
+                          {formatCurrency((item.price || 0) * (item.quantity || 0))}
+                        </div>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="text-center py-4 text-gray-500 text-sm">
+                    No items in this booklist
+                  </div>
                 )}
               </div>
-              <div className="ml-2 flex-shrink-0">
-                {item.is_required ? 
-                  <Check className="text-green-500" size={16} /> : 
-                  <X className="text-red-500" size={16} />
-                }
-              </div>
-            </div>
-            <div className="grid grid-cols-3 gap-2 text-xs text-gray-600">
-              <div>
-                <span className="block text-gray-400">Price</span>
-                <span className="font-medium">{formatCurrency(item.price)}</span>
-              </div>
-              <div>
-                <span className="block text-gray-400">Qty</span>
-                <span className="font-medium">{item.quantity || 0}</span>
-              </div>
-              <div>
-                <span className="block text-gray-400">Total</span>
-                <span className="font-medium text-gray-900">{formatCurrency((item.price || 0) * (item.quantity || 0))}</span>
-              </div>
             </div>
           </div>
-        ))}
-        <div className="bg-indigo-50 rounded-lg p-4 border border-indigo-200">
-          <div className="flex justify-between items-center">
-            <span className="font-medium text-gray-700">Total Amount:</span>
-            <span className="font-bold text-lg text-indigo-700">
-              {formatCurrency(items.reduce((sum, item) => sum + ((item.price || 0) * (item.quantity || 0)), 0))}
-            </span>
-          </div>
-        </div>
-      </div>
-    );
-
-    // Desktop Table View
-    const DesktopView = () => (
-      <div className="mt-4 hidden sm:block overflow-x-auto">
-        <div className="inline-block min-w-full align-middle">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Item</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Price</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Qty</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Required</th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {items.map((item) => (
-                <tr key={item.id} className="hover:bg-gray-50">
-                  <td className="px-4 py-3">
-                    <div className="font-medium text-gray-900">{item.name || 'Unnamed Item'}</div>
-                    {item.description && <div className="text-sm text-gray-500 mt-1">{item.description}</div>}
-                  </td>
-                  <td className="px-4 py-3 text-sm text-gray-500">{formatCurrency(item.price)}</td>
-                  <td className="px-4 py-3 text-sm text-gray-500">{item.quantity || 0}</td>
-                  <td className="px-4 py-3 text-sm font-medium text-gray-900">
-                    {formatCurrency((item.price || 0) * (item.quantity || 0))}
-                  </td>
-                  <td className="px-4 py-3">
-                    {item.is_required ? 
-                      <Check className="text-green-500" size={18} /> : 
-                      <X className="text-red-500" size={18} />
-                    }
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-            <tfoot className="bg-gray-50">
-              <tr>
-                <td colSpan="3" className="px-4 py-3 text-right text-sm font-medium text-gray-500">Total:</td>
-                <td className="px-4 py-3 text-sm font-bold text-gray-900">
-                  {formatCurrency(items.reduce((sum, item) => sum + ((item.price || 0) * (item.quantity || 0)), 0))}
-                </td>
-                <td></td>
-              </tr>
-            </tfoot>
-          </table>
-        </div>
-      </div>
-    );
-
-    return (
-      <>
-        <MobileView />
-        <DesktopView />
-      </>
+        </CardContent>
+      </Card>
     );
   };
 
-  const renderBooklists = (lists) => {
-    if (!lists || !Array.isArray(lists) || lists.length === 0) {
-      return (
-        <div className="text-center py-8 text-gray-500">
-          <Book size={48} className="mx-auto mb-4 text-gray-300" />
-          <p>No booklists available.</p>
-        </div>
-      );
-    }
+  // Render loading skeleton - Made responsive
+  const renderLoadingSkeleton = () => (
+    <div className="space-y-4">
+      {[1, 2].map((i) => (
+        <Card key={i} className="border border-gray-100 shadow-sm">
+          <CardHeader className="px-3 sm:px-6">
+            <Skeleton className="h-5 sm:h-6 w-32 sm:w-48" />
+            <Skeleton className="h-3 sm:h-4 w-24 sm:w-32" />
+          </CardHeader>
+          <CardContent className="px-3 sm:px-6">
+            <div className="space-y-3">
+              {[1, 2, 3].map((j) => (
+                <div key={j} className="flex flex-col sm:flex-row sm:justify-between sm:items-center p-3 bg-gray-50 rounded-lg gap-2 sm:gap-0">
+                  <div className="space-y-2">
+                    <Skeleton className="h-4 w-28 sm:w-32" />
+                    <Skeleton className="h-3 w-20 sm:w-24" />
+                  </div>
+                  <div className="flex items-center justify-between sm:justify-end sm:flex-col gap-2 sm:gap-1">
+                    <Skeleton className="h-5 sm:h-6 w-10 sm:w-12" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      ))}
+    </div>
+  );
 
-    return lists.map((list) => (
-      <div key={list.id} className="bg-white rounded-lg border border-gray-200 mb-4 overflow-hidden shadow-sm">
-        <div 
-          className="px-4 sm:px-6 py-4 cursor-pointer flex justify-between items-center hover:bg-gray-50 transition-colors" 
-          onClick={() => toggleExpandList(list.id)}
-        >
-          <div className="flex items-center min-w-0 flex-1">
-            <div className={`p-2 rounded-lg mr-3 sm:mr-4 flex-shrink-0 ${
-              activeTab === 'current' ? 'bg-emerald-100 text-emerald-600' : 'bg-indigo-100 text-indigo-600'
-            }`}>
-              <Book size={20} />
-            </div>
-            <div className="min-w-0 flex-1">
-              <h3 className="text-base sm:text-lg font-medium text-gray-900 truncate">
-                {list.title || 'Untitled Booklist'}
-              </h3>
-              <div className="flex flex-col sm:flex-row sm:items-center text-xs sm:text-sm text-gray-500 mt-1 space-y-1 sm:space-y-0 sm:space-x-4">
-                <span className="flex items-center">
-                  <Calendar className="mr-1 flex-shrink-0" size={14} />
-                  <span className="truncate">{list.academic_year || 'No academic year'}</span>
-                </span>
-                <span className="flex items-center">
-                  <FileText className="mr-1 flex-shrink-0" size={14} />
-                  <span className="truncate">Class {list.class_name_display || list.class_name || 'N/A'}</span>
-                </span>
-                {list.publish_date && (
-                  <span className="flex items-center">
-                    <Clock className="mr-1 flex-shrink-0" size={14} />
-                    <span className="truncate">Published: {new Date(list.publish_date).toLocaleDateString()}</span>
-                  </span>
-                )}
+  // Render empty state - Made responsive
+  const renderEmptyState = (type) => (
+    <div className="text-center py-8 sm:py-12 bg-white rounded-xl border border-gray-100 shadow-sm px-4">
+      {type === 'current' ? (
+        <Book className="h-12 w-12 sm:h-16 sm:w-16 text-indigo-200 mx-auto mb-4" />
+      ) : (
+        <Layers className="h-12 w-12 sm:h-16 sm:w-16 text-indigo-200 mx-auto mb-4" />
+      )}
+      <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-2">
+        {type === 'current' ? 'No Current Book Lists' : 'No Previous Book Lists'}
+      </h3>
+      <p className="text-gray-600 max-w-sm mx-auto text-sm sm:text-base">
+        {type === 'current' 
+          ? 'No book lists available for your current class.' 
+          : 'No book lists found from your previous classes.'}
+      </p>
+    </div>
+  );
+
+  // Render statistics summary card - Made responsive
+  const renderStatisticsSummary = (booklists, isHistorical = false) => {
+    if (!booklists || booklists.length === 0) return null;
+    
+    const stats = calculateOverallStatistics(booklists);
+    
+    return (
+      <Card className="border border-gray-100 shadow-sm bg-gradient-to-r from-indigo-50 to-purple-50">
+        <CardHeader className="pb-3 px-3 sm:px-6">
+          <CardTitle className="flex items-center gap-2 text-indigo-700 text-base sm:text-lg">
+            <TrendingUp className="h-4 w-4 sm:h-5 sm:w-5 flex-shrink-0" />
+            <span className="break-words">
+              {isHistorical ? "Historical Book Lists Summary" : "Book Lists Summary"}
+            </span>
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="px-3 sm:px-6">
+          <div className="grid grid-cols-1 xs:grid-cols-3 gap-4 sm:gap-6 text-center">
+            <div className="p-2 sm:p-0">
+              <div className="text-2xl sm:text-3xl font-bold text-indigo-600">
+                {stats.totalLists}
+              </div>
+              <div className="text-xs sm:text-sm text-gray-600 mt-1">
+                {isHistorical ? "Historical Lists" : "Total Lists"}
               </div>
             </div>
-          </div>
-          <div className="flex items-center flex-shrink-0 ml-3">
-            <div className="text-sm sm:text-lg mr-2 sm:mr-4 flex items-center">
-              <DollarSign size={14} className="text-green-600 mr-1" />
-              <span className="font-medium text-green-700">
-                {formatCurrency(list.calculated_total_price || list.total_price)}
-              </span>
-            </div>
-            {expandedList === list.id ? (
-              <ChevronUp className="text-gray-400" size={20} />
-            ) : (
-              <ChevronDown className="text-gray-400" size={20} />
-            )}
-          </div>
-        </div>
-        {expandedList === list.id && (
-          <div className="border-t border-gray-200 px-4 sm:px-6 py-4 bg-gray-50">
-            {list.description && (
-              <div className="mb-4 text-sm sm:text-base text-gray-600">
-                {list.description}
+            <div className="p-2 sm:p-0">
+              <div className="text-2xl sm:text-3xl font-bold text-emerald-600">
+                {stats.totalItems}
               </div>
-            )}
-            {renderBooklistItems(list.items)}
+              <div className="text-xs sm:text-sm text-gray-600 mt-1">Total Items</div>
+            </div>
+            <div className="p-2 sm:p-0">
+              <div className="text-2xl sm:text-3xl font-bold text-amber-600">
+                {formatCurrency(stats.totalCost)}
+              </div>
+              <div className="text-xs sm:text-sm text-gray-600 mt-1">Total Cost</div>
+            </div>
           </div>
-        )}
-      </div>
-    ));
+        </CardContent>
+      </Card>
+    );
   };
 
   return (
-    <div className="flex-1 overflow-auto p-3 sm:p-6 bg-gray-50">
-      <div className="mb-4 sm:mb-6">
-        <h2 className="text-xl sm:text-2xl font-bold text-gray-900">Book Lists</h2>
-        <p className="text-sm sm:text-base text-gray-500 mt-1">
-          {activeTab === 'current' 
-            ? 'Required books and materials for your current class' 
-            : 'Booklists from your previous classes'}
-        </p>
-      </div>
-
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100 mb-4 sm:mb-6">
-        <div className="flex border-b overflow-x-auto">
-          <button
-            className={`flex items-center px-4 sm:px-6 py-3 text-sm font-medium whitespace-nowrap flex-shrink-0 ${
-              activeTab === 'current' 
-                ? 'border-b-2 border-emerald-500 text-emerald-600' 
-                : 'text-gray-500 hover:text-gray-700'
-            }`}
-            onClick={() => setActiveTab('current')}
-          >
-            <Book className="mr-2" size={18} />
-            Current Book Lists
-          </button>
-          <button
-            className={`flex items-center px-4 sm:px-6 py-3 text-sm font-medium whitespace-nowrap flex-shrink-0 ${
-              activeTab === 'previous' 
-                ? 'border-b-2 border-indigo-500 text-indigo-600' 
-                : 'text-gray-500 hover:text-gray-700'
-            }`}
-            onClick={() => setActiveTab('previous')}
-          >
-            <Layers className="mr-2" size={18} />
-            Previous Classes
-          </button>
+    <ErrorBoundary>
+      <div className="space-y-4 sm:space-y-6 p-2 sm:p-4 lg:p-6">
+        {/* Header - Made responsive */}
+        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-3 sm:gap-4">
+          <div className="flex-1 min-w-0">
+            <h1 className="text-xl sm:text-2xl font-bold text-gray-900 break-words">Book Lists</h1>
+            <p className="text-gray-600 text-sm sm:text-base mt-1">View your current and previous class book lists</p>
+          </div>
         </div>
 
-        <div className="p-4 sm:p-6">
-          {activeTab === 'current' && (
-            <>
-              <div className="mb-4 sm:mb-6">
-                <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-2">Current Class Booklists</h3>
-                <p className="text-xs sm:text-sm text-gray-500">
-                  These are the required books and materials for your current class in the current academic year.
-                </p>
-              </div>
-              {renderBooklists(currentBooklists)}
-            </>
-          )}
-          
-          {activeTab === 'previous' && (
-            <>
-              <div className="mb-4 sm:mb-6">
-                <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-2">Previous Classes Booklists</h3>
-                <p className="text-xs sm:text-sm text-gray-500">
-                  These are booklists from classes you were in before your current class.
-                </p>
-              </div>
-              {renderBooklists(previousClassBooklists)}
-            </>
-          )}
-        </div>
+        {/* Error Alert */}
+        {error && (
+          <Alert className="border-red-200 bg-red-50">
+            <AlertDescription className="text-red-800 text-sm">
+              {error}
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {/* Tabs - Made responsive */}
+        <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
+          <TabsList className="grid w-full grid-cols-2 mb-4 sm:mb-6 bg-gray-100 p-1 rounded-lg h-auto">
+            <TabsTrigger 
+              value="current" 
+              className="flex items-center justify-center gap-1 sm:gap-2 rounded-md data-[state=active]:bg-white data-[state=active]:text-indigo-700 data-[state=active]:shadow-sm text-xs sm:text-sm py-2 px-1 sm:px-2"
+            >
+              <Book className="h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0" />
+              <span className="break-words text-center leading-tight">Current Book Lists</span>
+            </TabsTrigger>
+            <TabsTrigger 
+              value="previous" 
+              className="flex items-center justify-center gap-1 sm:gap-2 rounded-md data-[state=active]:bg-white data-[state=active]:text-indigo-700 data-[state=active]:shadow-sm text-xs sm:text-sm py-2 px-1 sm:px-2"
+            >
+              <Layers className="h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0" />
+              <span className="break-words text-center leading-tight">Previous Classes Lists</span>
+            </TabsTrigger>
+          </TabsList>
+
+          {/* Current Book Lists Tab */}
+          <TabsContent value="current">
+            <Card className="border border-gray-100 shadow-sm">
+              <CardHeader className="pb-3 border-b border-gray-100 px-3 sm:px-6">
+                <div className="flex flex-col lg:flex-row lg:justify-between lg:items-start gap-3 lg:gap-4">
+                  <div className="flex-1 min-w-0">
+                    <CardTitle className="text-base sm:text-lg text-indigo-700 flex items-center gap-2 break-words">
+                      <Book className="h-4 w-4 sm:h-5 sm:w-5 flex-shrink-0" />
+                      Current Class Book Lists
+                    </CardTitle>
+                    <CardDescription className="text-sm mt-1 break-words">
+                      View book lists for your current academic class
+                    </CardDescription>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent className="pt-4 sm:pt-6 px-3 sm:px-6">
+                {loading.current ? (
+                  renderLoadingSkeleton()
+                ) : currentBooklists && currentBooklists.length > 0 ? (
+                  <div className="space-y-4 sm:space-y-6">
+                    {renderStatisticsSummary(currentBooklists)}
+                    <div className="space-y-4">
+                      {currentBooklists.map(booklist => renderBooklistCard(booklist))}
+                    </div>
+                  </div>
+                ) : (
+                  renderEmptyState('current')
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Previous Classes Book Lists Tab */}
+          <TabsContent value="previous">
+            <Card className="border border-gray-100 shadow-sm">
+              <CardHeader className="pb-3 border-b border-gray-100 px-3 sm:px-6">
+                <div className="flex flex-col lg:flex-row lg:justify-between lg:items-start gap-3 lg:gap-4">
+                  <div className="flex-1 min-w-0">
+                    <CardTitle className="text-base sm:text-lg text-indigo-700 flex items-center gap-2 break-words">
+                      <Layers className="h-4 w-4 sm:h-5 sm:w-5 flex-shrink-0" />
+                      Previous Classes Book Lists
+                    </CardTitle>
+                    <CardDescription className="text-sm mt-1">
+                      View your historical book lists from previous classes
+                    </CardDescription>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent className="pt-4 sm:pt-6 px-3 sm:px-6">
+                {loading.previous ? (
+                  renderLoadingSkeleton()
+                ) : previousClassBooklists && previousClassBooklists.length > 0 ? (
+                  <div className="space-y-4 sm:space-y-6">
+                    {renderStatisticsSummary(previousClassBooklists, true)}
+                    <div className="space-y-4">
+                      {previousClassBooklists.map(booklist => renderBooklistCard(booklist))}
+                    </div>
+                  </div>
+                ) : (
+                  renderEmptyState('previous')
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
       </div>
-    </div>
+    </ErrorBoundary>
   );
 };
 
