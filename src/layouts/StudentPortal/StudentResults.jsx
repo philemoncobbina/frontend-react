@@ -228,102 +228,151 @@ const StudentResults = () => {
     return course.class_course.course.name || 'Unknown Subject';
   };
 
-  // Render result card - Made fully responsive
-  const renderResultCard = (result) => {
-    if (!result || !Array.isArray(result.course_results)) return null;
-    
+  // Render results table
+  const renderResultsTable = (results) => {
+    if (!results || results.length === 0) return null;
+
+    // Flatten all course results from all result records
+    const allCourseResults = results.flatMap(result => 
+      result.course_results?.map(course => ({
+        ...course,
+        class_name: result.class_name,
+        term: result.term,
+        published_date: result.published_date,
+        status: result.status
+      })) || []
+    );
+
+    if (allCourseResults.length === 0) return null;
+
     return (
-      <Card key={result.id} className="mb-4 border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
-        <CardHeader className="pb-3 px-3 sm:px-6">
-          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-3 sm:gap-0">
-            <div className="flex-1 min-w-0">
-              <CardTitle className="text-base sm:text-lg font-semibold break-words">
-                {result.class_name || 'Unknown Class'} - {result.term ? (result.term.charAt(0).toUpperCase() + result.term.slice(1)) : 'Unknown'} Term
-              </CardTitle>
-              <CardDescription className="flex flex-col xs:flex-row xs:items-center gap-1 xs:gap-2 mt-1 text-gray-500 text-sm">
-                <div className="flex items-center gap-1">
-                  <Calendar className="h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0" />
-                  <span className="text-xs sm:text-sm">
-                    Published: {result.published_date 
-                      ? new Date(result.published_date).toLocaleDateString() 
-                      : 'Not published'}
-                  </span>
-                </div>
-              </CardDescription>
-            </div>
-            <Badge className={`${studentResultsService.getStatusColor(result.status)} uppercase text-xs px-2 sm:px-3 py-1 self-start sm:self-auto flex-shrink-0`}>
-              {result.status || 'Unknown'}
-            </Badge>
-          </div>
-        </CardHeader>
-        <CardContent className="px-3 sm:px-6">
-          <div className="space-y-4">
-            {/* Course Results */}
-            <div>
-              <h4 className="font-semibold mb-3 flex items-center gap-2 text-indigo-700 text-sm sm:text-base">
-                <BookOpen className="h-4 w-4 flex-shrink-0" />
-                Subject Results
-              </h4>
-              <div className="grid gap-2">
-                {result.course_results.map((course) => (
-                  <div key={course.id || `course-${Math.random()}`} 
-                    className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-3 bg-gray-50 hover:bg-gray-100 rounded-lg transition-colors gap-2 sm:gap-4">
-                    <div className="flex-1 min-w-0">
-                      <h5 className="font-medium text-sm sm:text-base break-words">{getSubjectName(course)}</h5>
-                      <div className="text-xs sm:text-sm text-gray-600 mt-1 flex flex-col xs:flex-row xs:items-center gap-1 xs:gap-2">
-                        <span>Class Score: {course.class_score || 0}</span>
-                        <span className="hidden xs:inline text-gray-300">•</span>
-                        <span>Exam Score: {course.exam_score || 0}</span>
-                      </div>
-                    </div>
-                    <div className="flex items-center justify-between sm:justify-end sm:flex-col sm:text-right gap-2 sm:gap-1">
-                      <div className="font-bold text-lg sm:text-xl text-indigo-700">
-                        {studentResultsService.formatScore(course.total_score || 0)}
-                      </div>
-                      <Badge 
-                        variant="secondary"
-                        className={`${studentResultsService.getGradeColor(course.grade)} font-semibold text-xs`}
-                      >
-                        {course.grade || 'N/A'}
-                      </Badge>
+      <div className="overflow-x-auto border border-gray-200 rounded-lg">
+        <table className="min-w-full divide-y divide-gray-200 bg-white">
+          <thead className="bg-gray-50">
+            <tr>
+              <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Subject
+              </th>
+              <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Class Score
+              </th>
+              <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Exam Score
+              </th>
+              <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Total Score
+              </th>
+              <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Grade
+              </th>
+              
+              <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Remarks
+              </th>
+            </tr>
+          </thead>
+          <tbody className="bg-white divide-y divide-gray-200">
+            {allCourseResults.map((course, index) => (
+              <tr key={course.id || `course-${index}`} className="hover:bg-gray-50 transition-colors">
+                <td className="px-3 sm:px-6 py-4 whitespace-nowrap">
+                  <div className="flex items-center">
+                    <BookOpen className="h-4 w-4 text-indigo-500 mr-2 flex-shrink-0" />
+                    <div className="text-sm font-medium text-gray-900 break-words">
+                      {getSubjectName(course)}
                     </div>
                   </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+                </td>
+                <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                  {course.class_score || 0}
+                </td>
+                <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                  {course.exam_score || 0}
+                </td>
+                <td className="px-3 sm:px-6 py-4 whitespace-nowrap">
+                  <div className="text-sm font-bold text-indigo-700">
+                    {studentResultsService.formatScore(course.total_score || 0)}
+                  </div>
+                </td>
+                <td className="px-3 sm:px-6 py-4 whitespace-nowrap">
+                  <Badge 
+                    variant="secondary"
+                    className={`${studentResultsService.getGradeColor(course.grade)} font-semibold text-xs`}
+                  >
+                    {course.grade || 'N/A'}
+                  </Badge>
+                </td>
+                
+                <td className="px-3 sm:px-6 py-4 whitespace-nowrap">
+                  <Badge className={`${studentResultsService.getStatusColor(course.status)} uppercase text-xs`}>
+                    {course.remarks || 'Unknown'}
+                  </Badge>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     );
   };
 
-  // Render loading skeleton - Made responsive
-  const renderLoadingSkeleton = () => (
-    <div className="space-y-4">
-      {[1, 2].map((i) => (
-        <Card key={i} className="border border-gray-100 shadow-sm">
-          <CardHeader className="px-3 sm:px-6">
-            <Skeleton className="h-5 sm:h-6 w-32 sm:w-48" />
-            <Skeleton className="h-3 sm:h-4 w-24 sm:w-32" />
-          </CardHeader>
-          <CardContent className="px-3 sm:px-6">
-            <div className="space-y-3">
-              {[1, 2, 3].map((j) => (
-                <div key={j} className="flex flex-col sm:flex-row sm:justify-between sm:items-center p-3 bg-gray-50 rounded-lg gap-2 sm:gap-0">
-                  <div className="space-y-2">
-                    <Skeleton className="h-4 w-28 sm:w-32" />
-                    <Skeleton className="h-3 w-20 sm:w-24" />
-                  </div>
-                  <div className="flex items-center justify-between sm:justify-end sm:flex-col gap-2 sm:gap-1">
-                    <Skeleton className="h-5 sm:h-6 w-10 sm:w-12" />
-                    <Skeleton className="h-4 w-6 sm:w-8" />
-                  </div>
+  // Render loading table skeleton
+  const renderTableLoadingSkeleton = () => (
+    <div className="overflow-x-auto border border-gray-200 rounded-lg">
+      <table className="min-w-full divide-y divide-gray-200 bg-white">
+        <thead className="bg-gray-50">
+          <tr>
+            <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              Subject
+            </th>
+            <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              Class Score
+            </th>
+            <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              Exam Score
+            </th>
+            <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              Total Score
+            </th>
+            <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              Grade
+            </th>
+            
+            <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              Status
+            </th>
+          </tr>
+        </thead>
+        <tbody className="bg-white divide-y divide-gray-200">
+          {[1, 2, 3, 4, 5].map((i) => (
+            <tr key={i}>
+              <td className="px-3 sm:px-6 py-4 whitespace-nowrap">
+                <div className="flex items-center">
+                  <Skeleton className="h-4 w-4 mr-2" />
+                  <Skeleton className="h-4 w-32" />
                 </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      ))}
+              </td>
+              <td className="px-3 sm:px-6 py-4 whitespace-nowrap">
+                <Skeleton className="h-4 w-8" />
+              </td>
+              <td className="px-3 sm:px-6 py-4 whitespace-nowrap">
+                <Skeleton className="h-4 w-8" />
+              </td>
+              <td className="px-3 sm:px-6 py-4 whitespace-nowrap">
+                <Skeleton className="h-4 w-12" />
+              </td>
+              <td className="px-3 sm:px-6 py-4 whitespace-nowrap">
+                <Skeleton className="h-6 w-8" />
+              </td>
+              <td className="px-3 sm:px-6 py-4 whitespace-nowrap">
+                <Skeleton className="h-4 w-16" />
+              </td>
+              <td className="px-3 sm:px-6 py-4 whitespace-nowrap">
+                <Skeleton className="h-6 w-16" />
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 
@@ -352,12 +401,12 @@ const StudentResults = () => {
 
   // Render performance summary card - Made responsive
   const renderPerformanceSummary = (results, isHistorical = false) => {
-    if (!results || results.length <= 1) return null;
+    if (!results || results.length === 0) return null;
     
     const performance = calculateOverallPerformance(results);
     
     return (
-      <Card className="border border-gray-100 shadow-sm bg-gradient-to-r from-indigo-50 to-purple-50">
+      <Card className="border border-gray-100 shadow-sm bg-gradient-to-r from-indigo-50 to-purple-50 mb-6">
         <CardHeader className="pb-3 px-3 sm:px-6">
           <CardTitle className="flex items-center gap-2 text-indigo-700 text-base sm:text-lg">
             <TrendingUp className="h-4 w-4 sm:h-5 sm:w-5 flex-shrink-0" />
@@ -456,12 +505,12 @@ const StudentResults = () => {
                   </div>
                   <div className="flex-shrink-0">
                     <Select value={currentTerm} onValueChange={handleCurrentTermChange}>
-                      <SelectTrigger className="w-full sm:w-40 border-gray-200 focus:ring-indigo-500 text-sm">
+                      <SelectTrigger className="w-full sm:w-40 border-gray-200 focus:ring-indigo-500 text-sm ">
                         <SelectValue placeholder="Select Term" />
                       </SelectTrigger>
                       <SelectContent>
                         {termOptions.map((term) => (
-                          <SelectItem key={term.value} value={term.value} className="text-sm">
+                          <SelectItem  key={term.value} value={term.value} className="text-sm bg-white">
                             {term.label}
                           </SelectItem>
                         ))}
@@ -472,13 +521,11 @@ const StudentResults = () => {
               </CardHeader>
               <CardContent className="pt-4 sm:pt-6 px-3 sm:px-6">
                 {loading.current ? (
-                  renderLoadingSkeleton()
+                  renderTableLoadingSkeleton()
                 ) : currentResults && currentResults.length > 0 ? (
                   <div className="space-y-4 sm:space-y-6">
                     {renderPerformanceSummary(currentResults)}
-                    <div className="space-y-4">
-                      {currentResults.map(result => renderResultCard(result))}
-                    </div>
+                    {renderResultsTable(currentResults)}
                   </div>
                 ) : (
                   renderEmptyState('current', null, currentTerm)
@@ -502,13 +549,13 @@ const StudentResults = () => {
                     </CardDescription>
                   </div>
                   <div className="flex flex-col xs:flex-row gap-2 flex-shrink-0">
-                    <Select value={previousClass} onValueChange={handlePreviousClassChange}>
-                      <SelectTrigger className="w-full xs:w-32 sm:w-40 border-gray-200 focus:ring-indigo-500 text-sm">
+                    <Select  value={previousClass} onValueChange={handlePreviousClassChange}>
+                      <SelectTrigger className="w-full xs:w-32 sm:w-40 border-gray-200 focus:ring-indigo-500 text-sm bg-white">
                         <SelectValue placeholder="Select Class" />
                       </SelectTrigger>
                       <SelectContent>
                         {classOptions.map((cls) => (
-                          <SelectItem key={cls.value} value={cls.value} className="text-sm">
+                          <SelectItem key={cls.value} value={cls.value} className="text-sm bg-white">
                             {cls.label}
                           </SelectItem>
                         ))}
@@ -519,12 +566,12 @@ const StudentResults = () => {
                       onValueChange={handlePreviousTermChange}
                       disabled={!previousClass}
                     >
-                      <SelectTrigger className="w-full xs:w-32 sm:w-40 border-gray-200 focus:ring-indigo-500 text-sm">
+                      <SelectTrigger className="w-full xs:w-32 sm:w-40 border-gray-200 focus:ring-indigo-500 text-sm bg-white">
                         <SelectValue placeholder="Select Term" />
                       </SelectTrigger>
-                      <SelectContent>
+                      <SelectContent className='bg-white'>
                         {termOptions.map((term) => (
-                          <SelectItem key={term.value} value={term.value} className="text-sm">
+                          <SelectItem key={term.value} value={term.value} className="text-sm bg-white">
                             {term.label}
                           </SelectItem>
                         ))}
@@ -535,13 +582,11 @@ const StudentResults = () => {
               </CardHeader>
               <CardContent className="pt-4 sm:pt-6 px-3 sm:px-6">
                 {loading.previous ? (
-                  renderLoadingSkeleton()
+                  renderTableLoadingSkeleton()
                 ) : previousResults && previousResults.length > 0 ? (
                   <div className="space-y-4 sm:space-y-6">
                     {renderPerformanceSummary(previousResults, true)}
-                    <div className="space-y-4">
-                      {previousResults.map(result => renderResultCard(result))}
-                    </div>
+                    {renderResultsTable(previousResults)}
                   </div>
                 ) : (
                   renderEmptyState('previous', previousClass, previousTerm)

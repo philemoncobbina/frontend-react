@@ -301,14 +301,7 @@ const BookListViewer = () => {
         </CardHeader>
         <CardContent className="px-3 sm:px-6">
           <div className="grid grid-cols-1 xs:grid-cols-3 gap-4 sm:gap-6 text-center">
-            <div className="p-2 sm:p-0">
-              <div className="text-2xl sm:text-3xl font-bold text-indigo-600">
-                {stats.totalLists}
-              </div>
-              <div className="text-xs sm:text-sm text-gray-600 mt-1">
-                {isHistorical ? "Historical Lists" : "Total Lists"}
-              </div>
-            </div>
+            
             <div className="p-2 sm:p-0">
               <div className="text-2xl sm:text-3xl font-bold text-emerald-600">
                 {stats.totalItems}
