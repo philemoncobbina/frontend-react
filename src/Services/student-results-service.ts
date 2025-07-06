@@ -42,6 +42,7 @@ export interface Result {
   published_date?: string;
   created_at: string;
   updated_at: string;
+  report_card_pdf?: string; // New field for report card URL
   course_results: CourseResult[];
 }
 

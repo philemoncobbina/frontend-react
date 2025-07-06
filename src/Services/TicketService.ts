@@ -32,7 +32,7 @@ export const submitTicket = async (ticketData: TicketData) => {
             headers: {
                 'Content-Type': 'multipart/form-data',
             },
-        });d
+        });
         return response.data;
     } catch (error) {
         console.error('Error submitting ticket:', error);

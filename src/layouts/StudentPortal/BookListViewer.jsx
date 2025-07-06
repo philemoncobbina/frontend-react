@@ -4,7 +4,12 @@ import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Calendar, BookOpen, TrendingUp, Award, AlertTriangle, FileText, Book, DollarSign, Check, X, Layers } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { 
+  Calendar, BookOpen, TrendingUp, Award, AlertTriangle, FileText, Book, 
+  DollarSign, Check, X, Layers, ShoppingCart, Package, Users, 
+  GraduationCap, Download, Eye, Star, Hash
+} from 'lucide-react';
 import { BookListService } from '../../Services/BookListService';
 
 // Error Boundary Component
@@ -25,21 +30,20 @@ class ErrorBoundary extends React.Component {
   render() {
     if (this.state.hasError) {
       return (
-        <div className="p-8 flex flex-col items-center justify-center text-center">
-          <AlertTriangle className="h-16 w-16 text-amber-500 mb-4" />
-          <h2 className="text-2xl font-bold mb-2">Something went wrong</h2>
-          <p className="text-gray-600 mb-4">
+        <div className="text-center py-8 sm:py-16 bg-white rounded-2xl border border-slate-200 shadow-sm mx-4">
+          <div className="w-16 h-16 mx-auto mb-4 bg-red-100 rounded-full flex items-center justify-center">
+            <AlertTriangle className="h-8 w-8 text-red-400" />
+          </div>
+          <h3 className="text-lg font-semibold text-slate-900 mb-2">Something went wrong</h3>
+          <p className="text-slate-600 max-w-sm mx-auto mb-4 px-4">
             We couldn't load your book lists at this time. Please try again later.
           </p>
-          <pre className="bg-gray-100 p-4 rounded text-xs text-left overflow-auto max-w-full mb-4">
-            {this.state.error && this.state.error.toString()}
-          </pre>
-          <button 
-            className="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700"
+          <Button 
             onClick={() => this.setState({ hasError: false })}
+            className="bg-indigo-600 hover:bg-indigo-700"
           >
             Try Again
-          </button>
+          </Button>
         </div>
       );
     }
@@ -99,11 +103,6 @@ const BookListViewer = () => {
     }
   };
 
-  // Handle tab change
-  const handleTabChange = (value) => {
-    setActiveTab(value);
-  };
-
   // Format currency
   const formatCurrency = (amount) => {
     return new Intl.NumberFormat('en-US', {
@@ -112,319 +111,452 @@ const BookListViewer = () => {
     }).format(amount || 0);
   };
 
-  // Calculate overall statistics (placeholder implementation)
+  // Format date
+  const formatDate = (dateString) => {
+    if (!dateString) return 'N/A';
+    try {
+      return new Date(dateString).toLocaleDateString('en-US', {
+        year: 'numeric', month: 'short', day: 'numeric'
+      });
+    } catch {
+      return 'Invalid Date';
+    }
+  };
+
+  // Calculate overall statistics for Historical Summary
   const calculateOverallStatistics = (booklists) => {
     const totalLists = booklists.length;
     const totalItems = booklists.reduce((sum, list) => sum + (list.items?.length || 0), 0);
-    const totalCost = booklists.reduce((sum, list) => sum + (list.calculated_total_price || list.total_price || 0), 0);
+    // Only calculate total cost here for the Historical Summary
+    const totalCost = booklists.reduce((sum, list) => sum + (list.total_price || 0), 0);
+    const requiredItems = booklists.reduce((sum, list) => sum + (list.items?.filter(item => item.is_required).length || 0), 0);
     
     return {
       totalLists,
       totalItems,
-      totalCost
+      totalCost,
+      requiredItems
     };
   };
 
-  // Render booklist card - Made fully responsive
-  const renderBooklistCard = (booklist) => {
-    if (!booklist) return null;
-    
-    return (
-      <Card key={booklist.id} className="mb-4 border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
-        <CardHeader className="pb-3 px-3 sm:px-6">
-          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-3 sm:gap-0">
-            <div className="flex-1 min-w-0">
-              <CardTitle className="text-base sm:text-lg font-semibold break-words">
-                {booklist.title || 'Untitled Booklist'}
-              </CardTitle>
-              <CardDescription className="flex flex-col xs:flex-row xs:items-center gap-1 xs:gap-2 mt-1 text-gray-500 text-sm">
-                <div className="flex items-center gap-1">
-                  <Calendar className="h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0" />
-                  <span className="text-xs sm:text-sm">
-                    Academic Year: {booklist.academic_year || 'Not specified'}
-                  </span>
-                </div>
-                <span className="hidden xs:inline text-gray-300">•</span>
-                <div className="flex items-center gap-1">
-                  <FileText className="h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0" />
-                  <span className="text-xs sm:text-sm">
-                    Class: {booklist.class_name_display || booklist.class_name || 'N/A'}
-                  </span>
-                </div>
-                {booklist.publish_date && (
-                  <>
-                    <span className="hidden xs:inline text-gray-300">•</span>
-                    <span className="text-xs sm:text-sm">
-                      Published: {new Date(booklist.publish_date).toLocaleDateString()}
-                    </span>
-                  </>
-                )}
-              </CardDescription>
-            </div>
-            <div className="flex items-center gap-2 self-start sm:self-auto flex-shrink-0">
-              <Badge className="bg-green-100 text-green-800 uppercase text-xs px-2 sm:px-3 py-1">
-                {formatCurrency(booklist.calculated_total_price || booklist.total_price || 0)}
-              </Badge>
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent className="px-3 sm:px-6">
-          <div className="space-y-4">
-            {/* Description */}
-            {booklist.description && (
-              <div className="text-sm text-gray-600 p-3 bg-gray-50 rounded-lg">
-                {booklist.description}
-              </div>
-            )}
-
-            {/* Book Items */}
-            <div>
-              <h4 className="font-semibold mb-3 flex items-center gap-2 text-indigo-700 text-sm sm:text-base">
-                <BookOpen className="h-4 w-4 flex-shrink-0" />
-                Book Items ({booklist.items?.length || 0})
-              </h4>
-              <div className="grid gap-2">
-                {booklist.items && booklist.items.length > 0 ? (
-                  booklist.items.map((item) => (
-                    <div key={item.id || `item-${Math.random()}`} 
-                      className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-3 bg-gray-50 hover:bg-gray-100 rounded-lg transition-colors gap-2 sm:gap-4">
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
-                          <h5 className="font-medium text-sm sm:text-base break-words flex-1">
-                            {item.name || 'Unnamed Item'}
-                          </h5>
-                          <div className="flex-shrink-0">
-                            {item.is_required ? 
-                              <Check className="text-green-500 h-4 w-4" /> : 
-                              <X className="text-red-500 h-4 w-4" />
-                            }
-                          </div>
-                        </div>
-                        {item.description && (
-                          <p className="text-xs sm:text-sm text-gray-600 mt-1 break-words">
-                            {item.description}
-                          </p>
-                        )}
-                        <div className="text-xs sm:text-sm text-gray-600 mt-1 flex flex-col xs:flex-row xs:items-center gap-1 xs:gap-2">
-                          <span>Price: {formatCurrency(item.price || 0)}</span>
-                          <span className="hidden xs:inline text-gray-300">•</span>
-                          <span>Qty: {item.quantity || 0}</span>
-                          <span className="hidden xs:inline text-gray-300">•</span>
-                          <span className={item.is_required ? 'text-green-600 font-medium' : 'text-red-600'}>
-                            {item.is_required ? 'Required' : 'Optional'}
-                          </span>
-                        </div>
-                      </div>
-                      <div className="flex items-center justify-between sm:justify-end sm:flex-col sm:text-right gap-2 sm:gap-1">
-                        <div className="font-bold text-lg sm:text-xl text-indigo-700">
-                          {formatCurrency((item.price || 0) * (item.quantity || 0))}
-                        </div>
-                      </div>
-                    </div>
-                  ))
-                ) : (
-                  <div className="text-center py-4 text-gray-500 text-sm">
-                    No items in this booklist
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+  // Get item status badge
+  const getItemStatusBadge = (isRequired) => {
+    return isRequired ? (
+      <Badge className="bg-emerald-50 text-emerald-700 border-emerald-200 text-xs font-medium">
+        Required
+      </Badge>
+    ) : (
+      <Badge className="bg-amber-50 text-amber-700 border-amber-200 text-xs font-medium">
+        Optional
+      </Badge>
     );
   };
 
-  // Render loading skeleton - Made responsive
-  const renderLoadingSkeleton = () => (
-    <div className="space-y-4">
-      {[1, 2].map((i) => (
-        <Card key={i} className="border border-gray-100 shadow-sm">
-          <CardHeader className="px-3 sm:px-6">
-            <Skeleton className="h-5 sm:h-6 w-32 sm:w-48" />
-            <Skeleton className="h-3 sm:h-4 w-24 sm:w-32" />
-          </CardHeader>
-          <CardContent className="px-3 sm:px-6">
-            <div className="space-y-3">
-              {[1, 2, 3].map((j) => (
-                <div key={j} className="flex flex-col sm:flex-row sm:justify-between sm:items-center p-3 bg-gray-50 rounded-lg gap-2 sm:gap-0">
-                  <div className="space-y-2">
-                    <Skeleton className="h-4 w-28 sm:w-32" />
-                    <Skeleton className="h-3 w-20 sm:w-24" />
+  // StatCard component
+  const StatCard = ({ icon: Icon, title, value, subtitle, bgColor = 'bg-slate-50' }) => (
+    <div className={`${bgColor} rounded-xl p-3 sm:p-4`}>
+      <div className="flex items-center gap-2 sm:gap-3 mb-2 sm:mb-3">
+        <div className="p-1.5 sm:p-2 bg-white rounded-lg shadow-sm flex-shrink-0">
+          <Icon className="h-4 w-4 sm:h-5 sm:w-5 text-indigo-600" />
+        </div>
+        <div className="min-w-0 flex-1">
+          <div className="text-xs sm:text-sm font-medium text-slate-600 truncate">{title}</div>
+          <div className="text-base sm:text-lg font-bold text-slate-900 mt-0.5 sm:mt-1 truncate">{value}</div>
+        </div>
+      </div>
+      {subtitle && <div className="text-xs text-slate-500 line-clamp-2">{subtitle}</div>}
+    </div>
+  );
+
+  // Render booklist card
+  const renderBooklistCard = (booklist) => {
+    if (!booklist) return null;
+    
+    const stats = {
+      totalItems: booklist.items?.length || 0,
+      requiredItems: booklist.items?.filter(item => item.is_required).length || 0,
+      optionalItems: booklist.items?.filter(item => !item.is_required).length || 0,
+      // Use backend calculated total price
+      totalCost: booklist.total_price || 0
+    };
+    
+    return (
+      <div key={booklist.id} className="space-y-4 sm:space-y-6">
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+          {/* Hero Section - Responsive Layout */}
+          <div className="bg-gradient-to-br from-indigo-600 via-purple-600 to-blue-600 px-4 sm:px-6 lg:px-8 py-4 sm:py-6 text-white">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+              <div className="flex-1 min-w-0">
+                <h2 className="text-xl sm:text-2xl font-bold mb-2 sm:mb-3 line-clamp-2">
+                  {booklist.title || 'Untitled Booklist'}
+                </h2>
+                <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 text-indigo-100">
+                  <span className="flex items-center gap-1.5 text-sm">
+                    <GraduationCap className="h-4 w-4 flex-shrink-0" />
+                    <span className="truncate">{booklist.class_name_display || booklist.class_name || 'N/A'}</span>
+                  </span>
+                  <span className="flex items-center gap-1.5 text-sm">
+                    <Calendar className="h-4 w-4 flex-shrink-0" />
+                    <span className="truncate">{booklist.academic_year || 'Not specified'}</span>
+                  </span>
+                </div>
+              </div>
+              <div className="text-left sm:text-right flex-shrink-0">
+                <div className="text-2xl sm:text-3xl font-bold mb-1">{formatCurrency(stats.totalCost)}</div>
+                <div className="text-sm text-indigo-100">Total Cost</div>
+              </div>
+            </div>
+          </div>
+
+          {/* Stats Grid */}
+          <div className="p-4 sm:p-6 lg:p-8">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-6 mb-4 sm:mb-6">
+              <StatCard 
+                icon={Package} 
+                title="Total Items" 
+                value={stats.totalItems}
+                subtitle={`${stats.requiredItems} required, ${stats.optionalItems} optional`}
+              />
+              <StatCard 
+                icon={Star} 
+                title="Required Items" 
+                value={stats.requiredItems}
+                subtitle={`${Math.round((stats.requiredItems / stats.totalItems) * 100) || 0}% of total`}
+              />
+              <div className="col-span-2 lg:col-span-1">
+                <StatCard 
+                  icon={ShoppingCart} 
+                  title="Total Cost" 
+                  value={formatCurrency(stats.totalCost)}
+                  subtitle={booklist.publish_date && `Published: ${formatDate(booklist.publish_date)}`}
+                />
+              </div>
+              <div className="col-span-2 lg:col-span-1">
+                <StatCard 
+                  icon={Calendar} 
+                  title="Published" 
+                  value={formatDate(booklist.publish_date)}
+                  subtitle="Release date"
+                />
+              </div>
+            </div>
+
+            {/* Description */}
+            {booklist.description && (
+              <div className="mb-4 sm:mb-6">
+                <div className="bg-blue-50 rounded-xl p-3 sm:p-4 border border-blue-200">
+                  <h3 className="font-semibold text-blue-900 flex items-center gap-2 mb-2 text-sm sm:text-base">
+                    <FileText className="h-4 w-4" />
+                    Description
+                  </h3>
+                  <p className="text-xs sm:text-sm text-blue-800 leading-relaxed">
+                    {booklist.description}
+                  </p>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+        
+        {/* Items Table - Responsive */}
+        {booklist.items?.length > 0 && (
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+            <div className="px-4 sm:px-6 py-3 sm:py-4 bg-slate-50 border-b border-slate-200">
+              <h3 className="text-base sm:text-lg font-semibold text-slate-900 flex items-center gap-2">
+                <BookOpen className="h-4 sm:h-5 w-4 sm:w-5 text-indigo-600" />
+                Book Items ({booklist.items.length})
+              </h3>
+            </div>
+            
+            {/* Desktop Table */}
+            <div className="hidden lg:block overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-slate-200">
+                    <th className="text-left px-6 py-4 text-sm font-semibold text-slate-700">Item</th>
+                    <th className="text-center px-4 py-4 text-sm font-semibold text-slate-700">Price</th>
+                    <th className="text-center px-4 py-4 text-sm font-semibold text-slate-700">Quantity</th>
+                    <th className="text-center px-4 py-4 text-sm font-semibold text-slate-700">Subtotal</th>
+                    <th className="text-center px-4 py-4 text-sm font-semibold text-slate-700">Status</th>
+                    <th className="text-left px-6 py-4 text-sm font-semibold text-slate-700">Description</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {booklist.items.map((item, index) => (
+                    <tr key={item.id || index} className="border-b border-slate-100 hover:bg-slate-50 transition-colors">
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-3">
+                          <div className={`w-2 h-2 rounded-full ${item.is_required ? 'bg-emerald-500' : 'bg-amber-500'}`}></div>
+                          <span className="text-sm font-medium text-slate-900">
+                            {item.name || 'Unnamed Item'}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="px-4 py-4 text-center">
+                        <div className="text-sm font-medium text-slate-900">
+                          {formatCurrency(item.price || 0)}
+                        </div>
+                      </td>
+                      <td className="px-4 py-4 text-center">
+                        <Badge className="bg-slate-100 text-slate-700 border-slate-300 font-medium text-sm px-3 py-1">
+                          {item.quantity || 0}
+                        </Badge>
+                      </td>
+                      <td className="px-4 py-4 text-center">
+                        <div className="text-lg font-bold text-indigo-700">
+                          {formatCurrency((item.price || 0) * (item.quantity || 0))}
+                        </div>
+                      </td>
+                      <td className="px-4 py-4 text-center">
+                        {getItemStatusBadge(item.is_required)}
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="max-w-xs">
+                          {item.description ? (
+                            <div className="text-xs text-slate-600 bg-slate-50 p-2 rounded-lg">
+                              {item.description}
+                            </div>
+                          ) : (
+                            <span className="text-xs text-slate-400">No description</span>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Mobile Card Layout */}
+            <div className="lg:hidden">
+              <div className="divide-y divide-slate-200">
+                {booklist.items.map((item, index) => (
+                  <div key={item.id || index} className="p-4 space-y-3">
+                    <div className="flex items-start justify-between">
+                      <div className="flex items-center gap-3 flex-1 min-w-0">
+                        <div className={`w-2 h-2 rounded-full flex-shrink-0 ${item.is_required ? 'bg-emerald-500' : 'bg-amber-500'}`}></div>
+                        <div className="min-w-0 flex-1">
+                          <div className="text-sm font-medium text-slate-900 truncate">
+                            {item.name || 'Unnamed Item'}
+                          </div>
+                          <div className="text-xs text-slate-500 mt-1">
+                            {formatCurrency(item.price || 0)} × {item.quantity || 0}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="text-right flex-shrink-0">
+                        <div className="text-base font-bold text-indigo-700">
+                          {formatCurrency((item.price || 0) * (item.quantity || 0))}
+                        </div>
+                        <div className="mt-1">
+                          {getItemStatusBadge(item.is_required)}
+                        </div>
+                      </div>
+                    </div>
+                    {item.description && (
+                      <div className="text-xs text-slate-600 bg-slate-50 p-2 rounded-lg">
+                        {item.description}
+                      </div>
+                    )}
                   </div>
-                  <div className="flex items-center justify-between sm:justify-end sm:flex-col gap-2 sm:gap-1">
-                    <Skeleton className="h-5 sm:h-6 w-10 sm:w-12" />
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  // Render loading skeleton
+  const renderLoadingSkeleton = () => (
+    <div className="space-y-6 sm:space-y-8">
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+        <div className="bg-gradient-to-br from-indigo-600 to-purple-600 px-4 sm:px-6 lg:px-8 py-4 sm:py-6">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div className="space-y-2 flex-1">
+              <Skeleton className="h-6 w-3/4 sm:w-48 bg-indigo-400" />
+              <Skeleton className="h-4 w-1/2 sm:w-32 bg-indigo-400" />
+            </div>
+            <Skeleton className="h-10 w-20 sm:w-16 bg-indigo-400 self-start sm:self-auto" />
+          </div>
+        </div>
+        <div className="p-4 sm:p-6 lg:p-8">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-6">
+            {[1, 2, 3, 4].map(i => (
+              <div key={i} className="bg-slate-50 rounded-xl p-3 sm:p-4">
+                <div className="flex items-center gap-2 sm:gap-3 mb-2 sm:mb-3">
+                  <Skeleton className="h-8 w-8 sm:h-9 sm:w-9 rounded-lg" />
+                  <div className="space-y-1 sm:space-y-2 flex-1">
+                    <Skeleton className="h-3 w-3/4" />
+                    <Skeleton className="h-4 w-1/2" />
                   </div>
                 </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      ))}
+                <Skeleton className="h-3 w-full" />
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
     </div>
   );
 
-  // Render empty state - Made responsive
-  const renderEmptyState = (type) => (
-    <div className="text-center py-8 sm:py-12 bg-white rounded-xl border border-gray-100 shadow-sm px-4">
-      {type === 'current' ? (
-        <Book className="h-12 w-12 sm:h-16 sm:w-16 text-indigo-200 mx-auto mb-4" />
-      ) : (
-        <Layers className="h-12 w-12 sm:h-16 sm:w-16 text-indigo-200 mx-auto mb-4" />
-      )}
-      <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-2">
-        {type === 'current' ? 'No Current Book Lists' : 'No Previous Book Lists'}
-      </h3>
-      <p className="text-gray-600 max-w-sm mx-auto text-sm sm:text-base">
-        {type === 'current' 
-          ? 'No book lists available for your current class.' 
-          : 'No book lists found from your previous classes.'}
-      </p>
-    </div>
-  );
+  // Render empty state
+  const renderEmptyState = (type) => {
+    const Icon = type === 'current' ? Book : Layers;
+    const title = type === 'current' ? 'No Current Book Lists' : 'No Previous Book Lists';
+    const message = type === 'current' 
+      ? 'No book lists available for your current class.' 
+      : 'No book lists found from your previous classes.';
 
-  // Render statistics summary card - Made responsive
+    return (
+      <div className="text-center py-8 sm:py-16 bg-white rounded-2xl border border-slate-200 shadow-sm">
+        <div className="w-16 h-16 mx-auto mb-4 bg-slate-100 rounded-full flex items-center justify-center">
+          <Icon className="h-8 w-8 text-slate-400" />
+        </div>
+        <h3 className="text-lg font-semibold text-slate-900 mb-2">{title}</h3>
+        <p className="text-slate-600 max-w-sm mx-auto px-4">{message}</p>
+      </div>
+    );
+  };
+
+  // Render statistics summary
   const renderStatisticsSummary = (booklists, isHistorical = false) => {
     if (!booklists || booklists.length === 0) return null;
     
     const stats = calculateOverallStatistics(booklists);
     
     return (
-      <Card className="border border-gray-100 shadow-sm bg-gradient-to-r from-indigo-50 to-purple-50">
-        <CardHeader className="pb-3 px-3 sm:px-6">
-          <CardTitle className="flex items-center gap-2 text-indigo-700 text-base sm:text-lg">
-            <TrendingUp className="h-4 w-4 sm:h-5 sm:w-5 flex-shrink-0" />
-            <span className="break-words">
-              {isHistorical ? "Historical Book Lists Summary" : "Book Lists Summary"}
-            </span>
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="px-3 sm:px-6">
-          <div className="grid grid-cols-1 xs:grid-cols-3 gap-4 sm:gap-6 text-center">
-            
-            <div className="p-2 sm:p-0">
-              <div className="text-2xl sm:text-3xl font-bold text-emerald-600">
-                {stats.totalItems}
-              </div>
-              <div className="text-xs sm:text-sm text-gray-600 mt-1">Total Items</div>
-            </div>
-            <div className="p-2 sm:p-0">
-              <div className="text-2xl sm:text-3xl font-bold text-amber-600">
-                {formatCurrency(stats.totalCost)}
-              </div>
-              <div className="text-xs sm:text-sm text-gray-600 mt-1">Total Cost</div>
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 sm:p-6 mb-4 sm:mb-6">
+        <h3 className="text-base sm:text-lg font-semibold text-slate-900 mb-3 sm:mb-4 flex items-center gap-2">
+          <TrendingUp className="h-4 sm:h-5 w-4 sm:w-5 text-indigo-600" />
+          {isHistorical ? "Historical Summary" : "Overview"}
+        </h3>
+        
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-6">
+          <StatCard 
+            icon={Hash} 
+            title="Total Lists" 
+            value={stats.totalLists}
+            subtitle="Active book lists"
+          />
+          <StatCard 
+            icon={Package} 
+            title="Total Items" 
+            value={stats.totalItems}
+            subtitle="Books & materials"
+          />
+          <StatCard 
+            icon={Star} 
+            title="Required Items" 
+            value={stats.requiredItems}
+            subtitle="Must-have items"
+          />
+          <StatCard 
+            icon={DollarSign} 
+            title="Total Cost" 
+            value={formatCurrency(stats.totalCost)}
+            subtitle="Estimated total"
+          />
+        </div>
+      </div>
+    );
+  };
+
+  // Tab content component
+  const TabContent = ({ type }) => {
+    const isCurrentTab = type === 'current';
+    const data = isCurrentTab ? currentBooklists : previousClassBooklists;
+    const isLoading = loading[type];
+
+    return (
+      <div className="space-y-4 sm:space-y-6">
+        {/* Filter Bar */}
+        <div className="flex flex-col gap-4 p-4 sm:p-6 bg-white rounded-2xl border border-slate-200 shadow-sm">
+          <div>
+            <h3 className="text-base sm:text-lg font-semibold text-slate-900">
+              {isCurrentTab ? 'Current Class Book Lists' : 'Previous Class Book Lists'}
+            </h3>
+            <p className="text-xs sm:text-sm text-slate-600 mt-1">
+              {isCurrentTab 
+                ? 'View book lists for your current academic class'
+                : 'View your historical book lists from previous classes'
+              }
+            </p>
+          </div>
+        </div>
+
+        {/* Content */}
+        {isLoading ? (
+          renderLoadingSkeleton()
+        ) : data?.length > 0 ? (
+          <div className="space-y-4 sm:space-y-6">
+            {renderStatisticsSummary(data, !isCurrentTab)}
+            <div className="space-y-6 sm:space-y-8">
+              {data.map((booklist) => renderBooklistCard(booklist))}
             </div>
           </div>
-        </CardContent>
-      </Card>
+        ) : (
+          renderEmptyState(type)
+        )}
+      </div>
     );
   };
 
   return (
     <ErrorBoundary>
-      <div className="space-y-4 sm:space-y-6 p-2 sm:p-4 lg:p-6">
-        {/* Header - Made responsive */}
-        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-3 sm:gap-4">
-          <div className="flex-1 min-w-0">
-            <h1 className="text-xl sm:text-2xl font-bold text-gray-900 break-words">Book Lists</h1>
-            <p className="text-gray-600 text-sm sm:text-base mt-1">View your current and previous class book lists</p>
+      <div className="min-h-screen bg-slate-50">
+        <div className="max-w-9xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+          {/* Header */}
+          <div className="mb-6 sm:mb-8">
+            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-4">
+              <div>
+                <h1 className="text-2xl sm:text-3xl font-bold text-slate-900">Book Lists</h1>
+                <p className="text-slate-600 mt-1 sm:mt-2 text-sm sm:text-base">
+                  Manage your current and previous class book lists
+                </p>
+              </div>
+              <Badge className="bg-indigo-50 text-indigo-700 border-indigo-200 px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-medium self-start">
+                Academic Resources
+              </Badge>
+            </div>
           </div>
+
+          {/* Error Alert */}
+          {error && (
+            <Alert className="mb-4 sm:mb-6 border-red-200 bg-red-50">
+              <AlertTriangle className="h-4 w-4" />
+              <AlertDescription className="text-red-800">{error}</AlertDescription>
+            </Alert>
+          )}
+
+          {/* Tabs */}
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+            <TabsList className="grid w-full grid-cols-2 mb-4 sm:mb-6 bg-gray-100 p-1 rounded-lg h-auto">
+              <TabsTrigger 
+                value="current" 
+                className="flex items-center justify-center gap-1 sm:gap-2 rounded-md data-[state=active]:bg-white data-[state=active]:text-indigo-700 data-[state=active]:shadow-sm text-xs sm:text-sm py-2 px-2 sm:px-3"
+              >
+                <Book className="h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0" />
+                <span className="break-words text-center leading-tight">Current Lists</span>
+              </TabsTrigger>
+              <TabsTrigger 
+                value="previous" 
+                className="flex items-center justify-center gap-1 sm:gap-2 rounded-md data-[state=active]:bg-white data-[state=active]:text-indigo-700 data-[state=active]:shadow-sm text-xs sm:text-sm py-2 px-2 sm:px-3"
+              >
+                <Layers className="h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0" />
+                <span className="break-words text-center leading-tight">Previous Lists</span>
+              </TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="current">
+              <TabContent type="current" />
+            </TabsContent>
+            <TabsContent value="previous">
+              <TabContent type="previous" />
+            </TabsContent>
+          </Tabs>
         </div>
-
-        {/* Error Alert */}
-        {error && (
-          <Alert className="border-red-200 bg-red-50">
-            <AlertDescription className="text-red-800 text-sm">
-              {error}
-            </AlertDescription>
-          </Alert>
-        )}
-
-        {/* Tabs - Made responsive */}
-        <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
-          <TabsList className="grid w-full grid-cols-2 mb-4 sm:mb-6 bg-gray-100 p-1 rounded-lg h-auto">
-            <TabsTrigger 
-              value="current" 
-              className="flex items-center justify-center gap-1 sm:gap-2 rounded-md data-[state=active]:bg-white data-[state=active]:text-indigo-700 data-[state=active]:shadow-sm text-xs sm:text-sm py-2 px-1 sm:px-2"
-            >
-              <Book className="h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0" />
-              <span className="break-words text-center leading-tight">Current Book Lists</span>
-            </TabsTrigger>
-            <TabsTrigger 
-              value="previous" 
-              className="flex items-center justify-center gap-1 sm:gap-2 rounded-md data-[state=active]:bg-white data-[state=active]:text-indigo-700 data-[state=active]:shadow-sm text-xs sm:text-sm py-2 px-1 sm:px-2"
-            >
-              <Layers className="h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0" />
-              <span className="break-words text-center leading-tight">Previous Classes Lists</span>
-            </TabsTrigger>
-          </TabsList>
-
-          {/* Current Book Lists Tab */}
-          <TabsContent value="current">
-            <Card className="border border-gray-100 shadow-sm">
-              <CardHeader className="pb-3 border-b border-gray-100 px-3 sm:px-6">
-                <div className="flex flex-col lg:flex-row lg:justify-between lg:items-start gap-3 lg:gap-4">
-                  <div className="flex-1 min-w-0">
-                    <CardTitle className="text-base sm:text-lg text-indigo-700 flex items-center gap-2 break-words">
-                      <Book className="h-4 w-4 sm:h-5 sm:w-5 flex-shrink-0" />
-                      Current Class Book Lists
-                    </CardTitle>
-                    <CardDescription className="text-sm mt-1 break-words">
-                      View book lists for your current academic class
-                    </CardDescription>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent className="pt-4 sm:pt-6 px-3 sm:px-6">
-                {loading.current ? (
-                  renderLoadingSkeleton()
-                ) : currentBooklists && currentBooklists.length > 0 ? (
-                  <div className="space-y-4 sm:space-y-6">
-                    {renderStatisticsSummary(currentBooklists)}
-                    <div className="space-y-4">
-                      {currentBooklists.map(booklist => renderBooklistCard(booklist))}
-                    </div>
-                  </div>
-                ) : (
-                  renderEmptyState('current')
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          {/* Previous Classes Book Lists Tab */}
-          <TabsContent value="previous">
-            <Card className="border border-gray-100 shadow-sm">
-              <CardHeader className="pb-3 border-b border-gray-100 px-3 sm:px-6">
-                <div className="flex flex-col lg:flex-row lg:justify-between lg:items-start gap-3 lg:gap-4">
-                  <div className="flex-1 min-w-0">
-                    <CardTitle className="text-base sm:text-lg text-indigo-700 flex items-center gap-2 break-words">
-                      <Layers className="h-4 w-4 sm:h-5 sm:w-5 flex-shrink-0" />
-                      Previous Classes Book Lists
-                    </CardTitle>
-                    <CardDescription className="text-sm mt-1">
-                      View your historical book lists from previous classes
-                    </CardDescription>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent className="pt-4 sm:pt-6 px-3 sm:px-6">
-                {loading.previous ? (
-                  renderLoadingSkeleton()
-                ) : previousClassBooklists && previousClassBooklists.length > 0 ? (
-                  <div className="space-y-4 sm:space-y-6">
-                    {renderStatisticsSummary(previousClassBooklists, true)}
-                    <div className="space-y-4">
-                      {previousClassBooklists.map(booklist => renderBooklistCard(booklist))}
-                    </div>
-                  </div>
-                ) : (
-                  renderEmptyState('previous')
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
-        </Tabs>
       </div>
     </ErrorBoundary>
   );
