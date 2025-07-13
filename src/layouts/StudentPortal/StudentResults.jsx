@@ -36,6 +36,11 @@ const StudentResults = () => {
     previousTerm: ''
   });
 
+  // Detect browser and device type
+  const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+  const isChrome = /Chrome/i.test(navigator.userAgent);
+  const isChromeMobile = isMobile && isChrome;
+
   useEffect(() => {
     getCurrentUser()
       .then(user => user && setUserData({ class_name: user.class_name || '' }))
@@ -148,6 +153,30 @@ const StudentResults = () => {
     return gradeColors[grade] || 'bg-slate-100 text-slate-700 border-slate-300';
   };
 
+  // Fixed PDF handler for Chrome mobile
+  const handlePdfView = (pdfUrl) => {
+    if (!pdfUrl) return;
+
+    if (isChromeMobile) {
+      // For Chrome mobile, force download or use a different approach
+      const link = document.createElement('a');
+      link.href = pdfUrl;
+      link.target = '_blank';
+      link.rel = 'noopener noreferrer';
+      
+      // Try to force download on Chrome mobile
+      link.download = `report-card-${Date.now()}.pdf`;
+      
+      // Append to body, click, and remove
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } else {
+      // For all other browsers, use window.open
+      window.open(pdfUrl, '_blank', 'noopener,noreferrer');
+    }
+  };
+
   const StatCard = ({ icon: Icon, title, value, subtitle, bgColor = 'bg-slate-50' }) => (
     <div className={`${bgColor} rounded-xl p-4`}>
       <div className="flex items-center gap-3 mb-3">
@@ -171,32 +200,59 @@ const StudentResults = () => {
     return (
       <div className="space-y-6">
         <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-          {/* Hero Section */}
-          <div className="bg-gradient-to-br from-indigo-600 via-purple-600 to-blue-600 px-8 py-6 text-white">
-            <div className="flex items-center justify-between">
-              <div>
-                <h2 className="text-2xl font-bold mb-2">{result.student_name}</h2>
-                <div className="flex items-center gap-4 text-indigo-100">
-                  <span className="flex items-center gap-1">
-                    <GraduationCap className="h-4 w-4" />
-                    {result.class_name}
-                  </span>
-                  <span className="flex items-center gap-1">
-                    <Calendar className="h-4 w-4" />
-                    {result.term?.charAt(0).toUpperCase() + result.term?.slice(1)} Term
-                  </span>
+          {/* Hero Section - FIXED RESPONSIVENESS */}
+          <div className="bg-gradient-to-br from-indigo-600 via-purple-600 to-blue-600 text-white">
+            <div className="px-4 sm:px-6 lg:px-8 py-4 sm:py-6">
+              {/* Mobile Layout (Below sm) */}
+              <div className="sm:hidden">
+                {/* Name and Class/Term Row */}
+                <div className="flex flex-col space-y-2 mb-4">
+                  <h2 className="text-xl font-bold leading-tight">{result.student_name}</h2>
+                  <div className="flex items-center gap-3 text-indigo-100 text-sm">
+                    <span className="flex items-center gap-1">
+                      <GraduationCap className="h-3 w-3" />
+                      {result.class_name}
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <Calendar className="h-3 w-3" />
+                      {result.term?.charAt(0).toUpperCase() + result.term?.slice(1)} Term
+                    </span>
+                  </div>
+                </div>
+                
+                {/* Average Score - Centered */}
+                <div className="text-center bg-black bg-opacity-10 rounded-lg py-3 px-4">
+                  <div className="text-2xl font-bold mb-1">{result.average_score || 0}%</div>
+                  <div className="text-sm text-indigo-100">Average Score</div>
                 </div>
               </div>
-              <div className="text-right">
-                <div className="text-3xl font-bold mb-1">{result.average_score || 0}%</div>
-                <div className="text-sm text-indigo-100">Average Score</div>
+
+              {/* Desktop Layout (sm and above) */}
+              <div className="hidden sm:flex items-center justify-between">
+                <div>
+                  <h2 className="text-2xl font-bold mb-2">{result.student_name}</h2>
+                  <div className="flex items-center gap-4 text-indigo-100">
+                    <span className="flex items-center gap-1">
+                      <GraduationCap className="h-4 w-4" />
+                      {result.class_name}
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <Calendar className="h-4 w-4" />
+                      {result.term?.charAt(0).toUpperCase() + result.term?.slice(1)} Term
+                    </span>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <div className="text-3xl font-bold mb-1">{result.average_score || 0}%</div>
+                  <div className="text-sm text-indigo-100">Average Score</div>
+                </div>
               </div>
             </div>
           </div>
 
           {/* Stats Grid */}
-          <div className="p-8">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+          <div className="p-4 sm:p-6 lg:p-8">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-6">
               <StatCard 
                 icon={StatusIcon} 
                 title="Status" 
@@ -223,16 +279,16 @@ const StudentResults = () => {
               />
             </div>
 
-            {/* Actions */}
+            {/* Actions - Updated PDF handling */}
             {result.report_card_pdf && (
               <div className="flex flex-wrap gap-3 mb-6">
                 <Button 
                   variant="outline" 
-                  onClick={() => window.open(result.report_card_pdf, '_blank')}
+                  onClick={() => handlePdfView(result.report_card_pdf)}
                   className="flex items-center gap-2 bg-white border-slate-300 hover:bg-slate-50"
                 >
                   <Download className="h-4 w-4" />
-                  Download Report Card
+                  {isChromeMobile ? 'Download Report Card' : 'View Report Card'}
                 </Button>
               </div>
             )}
@@ -284,7 +340,7 @@ const StudentResults = () => {
         {/* Subjects Table */}
         {result.course_results?.length > 0 && (
           <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-            <div className="px-6 py-4 bg-slate-50 border-b border-slate-200">
+            <div className="px-4 sm:px-6 py-4 bg-slate-50 border-b border-slate-200">
               <h3 className="text-lg font-semibold text-slate-900 flex items-center gap-2">
                 <BookOpen className="h-5 w-5 text-indigo-600" />
                 Subject Performance
@@ -295,19 +351,19 @@ const StudentResults = () => {
               <table className="w-full">
                 <thead>
                   <tr className="border-b border-slate-200">
-                    <th className="text-left px-6 py-4 text-sm font-semibold text-slate-700">Subject</th>
-                    <th className="text-center px-4 py-4 text-sm font-semibold text-slate-700">Class Score (40) </th>
-                    <th className="text-center px-4 py-4 text-sm font-semibold text-slate-700">Exam Score (60)</th>
-                    <th className="text-center px-4 py-4 text-sm font-semibold text-slate-700">Total (100)</th>
-                    <th className="text-center px-4 py-4 text-sm font-semibold text-slate-700">Grade</th>
-                    <th className="text-center px-4 py-4 text-sm font-semibold text-slate-700">Position</th>
-                    <th className="text-left px-6 py-4 text-sm font-semibold text-slate-700">Remarks</th>
+                    <th className="text-left px-4 sm:px-6 py-4 text-sm font-semibold text-slate-700">Subject</th>
+                    <th className="text-center px-2 sm:px-4 py-4 text-sm font-semibold text-slate-700">Class Score (40) </th>
+                    <th className="text-center px-2 sm:px-4 py-4 text-sm font-semibold text-slate-700">Exam Score (60)</th>
+                    <th className="text-center px-2 sm:px-4 py-4 text-sm font-semibold text-slate-700">Total (100)</th>
+                    <th className="text-center px-2 sm:px-4 py-4 text-sm font-semibold text-slate-700">Grade</th>
+                    <th className="text-center px-2 sm:px-4 py-4 text-sm font-semibold text-slate-700">Position</th>
+                    <th className="text-left px-4 sm:px-6 py-4 text-sm font-semibold text-slate-700">Remarks</th>
                   </tr>
                 </thead>
                 <tbody>
                   {result.course_results.map((course, index) => (
                     <tr key={course.id || index} className="border-b border-slate-100 hover:bg-slate-50 transition-colors">
-                      <td className="px-6 py-4">
+                      <td className="px-4 sm:px-6 py-4">
                         <div className="flex items-center gap-3">
                           <div className="w-2 h-2 bg-indigo-500 rounded-full"></div>
                           <span className="text-sm font-medium text-slate-900">
@@ -315,32 +371,32 @@ const StudentResults = () => {
                           </span>
                         </div>
                       </td>
-                      <td className="px-4 py-4 text-center">
+                      <td className="px-2 sm:px-4 py-4 text-center">
                         <div className="text-sm font-medium text-slate-900">
                           {course.class_score || 0}
                         </div>
                       </td>
-                      <td className="px-4 py-4 text-center">
+                      <td className="px-2 sm:px-4 py-4 text-center">
                         <div className="text-sm font-medium text-slate-900">
                           {course.exam_score || 0}
                         </div>
                       </td>
-                      <td className="px-4 py-4 text-center">
+                      <td className="px-2 sm:px-4 py-4 text-center">
                         <div className="text-lg font-bold text-indigo-700">
                           {course.total_score || 0}
                         </div>
                       </td>
-                      <td className="px-4 py-4 text-center">
+                      <td className="px-2 sm:px-4 py-4 text-center">
                         <Badge className={`${getGradeColor(course.grade)} font-semibold text-sm px-3 py-1`}>
                           {course.grade || 'N/A'}
                         </Badge>
                       </td>
-                      <td className="px-4 py-4 text-center">
+                      <td className="px-2 sm:px-4 py-4 text-center">
                         <Badge className="bg-slate-100 text-slate-700 border-slate-300 font-medium text-sm px-3 py-1">
                           {course.position_context || course.position || 'N/A'}
                         </Badge>
                       </td>
-                      <td className="px-6 py-4">
+                      <td className="px-4 sm:px-6 py-4">
                         <div className="max-w-xs">
                           {course.remarks ? (
                             <div className="text-xs text-slate-600 bg-slate-50 p-2 rounded-lg">
@@ -365,7 +421,7 @@ const StudentResults = () => {
   const LoadingSkeleton = () => (
     <div className="space-y-8">
       <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-        <div className="bg-gradient-to-br from-indigo-600 to-purple-600 px-8 py-6">
+        <div className="bg-gradient-to-br from-indigo-600 to-purple-600 px-4 sm:px-8 py-4 sm:py-6">
           <div className="flex items-center justify-between">
             <div className="space-y-2">
               <Skeleton className="h-6 w-48 bg-indigo-400" />
@@ -374,8 +430,8 @@ const StudentResults = () => {
             <Skeleton className="h-10 w-16 bg-indigo-400" />
           </div>
         </div>
-        <div className="p-8">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+        <div className="p-4 sm:p-8">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 sm:gap-6">
             {[1, 2, 3, 4].map(i => (
               <div key={i} className="bg-slate-50 rounded-xl p-4">
                 <div className="flex items-center gap-3 mb-3">
@@ -474,7 +530,7 @@ const StudentResults = () => {
     return (
       <div className="space-y-6">
         {/* Filter Bar */}
-        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 p-6 bg-white rounded-2xl border border-slate-200 shadow-sm">
+        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 p-4 sm:p-6 bg-white rounded-2xl border border-slate-200 shadow-sm">
           <div>
             <h3 className="text-lg font-semibold text-slate-900">
               {isCurrentTab ? 'Current Class Results' : 'Previous Class Results'}
