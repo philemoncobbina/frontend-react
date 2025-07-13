@@ -35,13 +35,15 @@ const StudentResults = () => {
     previousClass: '',
     previousTerm: ''
   });
-
-  // Detect browser and device type
-  const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-  const isChrome = /Chrome/i.test(navigator.userAgent);
-  const isChromeMobile = isMobile && isChrome;
+  const [isChromeMobile, setIsChromeMobile] = useState(false);
 
   useEffect(() => {
+    // Detect Chrome mobile more reliably
+    const userAgent = navigator.userAgent;
+    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(userAgent);
+    const isChrome = /Chrome/i.test(userAgent) && !/Edge|Edg|OPR/i.test(userAgent);
+    setIsChromeMobile(isMobile && isChrome);
+
     getCurrentUser()
       .then(user => user && setUserData({ class_name: user.class_name || '' }))
       .catch(err => {
@@ -153,28 +155,38 @@ const StudentResults = () => {
     return gradeColors[grade] || 'bg-slate-100 text-slate-700 border-slate-300';
   };
 
-  // Fixed PDF handler for Chrome mobile
+  // Improved PDF handler with multiple fallbacks
   const handlePdfView = (pdfUrl) => {
     if (!pdfUrl) return;
 
-    if (isChromeMobile) {
-      // For Chrome mobile, force download or use a different approach
-      const link = document.createElement('a');
-      link.href = pdfUrl;
-      link.target = '_blank';
-      link.rel = 'noopener noreferrer';
-      
-      // Try to force download on Chrome mobile
-      link.download = `report-card-${Date.now()}.pdf`;
-      
-      // Append to body, click, and remove
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-    } else {
-      // For all other browsers, use window.open
-      window.open(pdfUrl, '_blank', 'noopener,noreferrer');
+    // First try: Open in new tab (works for most browsers)
+    const newTab = window.open('', '_blank');
+    
+    // Second try: Use iframe (works for some mobile browsers)
+    if (!newTab || newTab.closed || typeof newTab.closed === 'undefined') {
+      const iframe = document.createElement('iframe');
+      iframe.src = pdfUrl;
+      iframe.style.display = 'none';
+      document.body.appendChild(iframe);
+      setTimeout(() => {
+        document.body.removeChild(iframe);
+      }, 100);
+      return;
     }
+
+    // Third try: Force download (last resort for Chrome mobile)
+    newTab.location = pdfUrl;
+    setTimeout(() => {
+      if (newTab.document.readyState === 'complete' && newTab.document.body.innerText === '') {
+        newTab.close();
+        const link = document.createElement('a');
+        link.href = pdfUrl;
+        link.download = `report-card-${Date.now()}.pdf`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      }
+    }, 1000);
   };
 
   const StatCard = ({ icon: Icon, title, value, subtitle, bgColor = 'bg-slate-50' }) => (
@@ -200,12 +212,9 @@ const StudentResults = () => {
     return (
       <div className="space-y-6">
         <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-          {/* Hero Section - FIXED RESPONSIVENESS */}
           <div className="bg-gradient-to-br from-indigo-600 via-purple-600 to-blue-600 text-white">
             <div className="px-4 sm:px-6 lg:px-8 py-4 sm:py-6">
-              {/* Mobile Layout (Below sm) */}
               <div className="sm:hidden">
-                {/* Name and Class/Term Row */}
                 <div className="flex flex-col space-y-2 mb-4">
                   <h2 className="text-xl font-bold leading-tight">{result.student_name}</h2>
                   <div className="flex items-center gap-3 text-indigo-100 text-sm">
@@ -219,15 +228,12 @@ const StudentResults = () => {
                     </span>
                   </div>
                 </div>
-                
-                {/* Average Score - Centered */}
                 <div className="text-center bg-black bg-opacity-10 rounded-lg py-3 px-4">
                   <div className="text-2xl font-bold mb-1">{result.average_score || 0}%</div>
                   <div className="text-sm text-indigo-100">Average Score</div>
                 </div>
               </div>
 
-              {/* Desktop Layout (sm and above) */}
               <div className="hidden sm:flex items-center justify-between">
                 <div>
                   <h2 className="text-2xl font-bold mb-2">{result.student_name}</h2>
@@ -250,7 +256,6 @@ const StudentResults = () => {
             </div>
           </div>
 
-          {/* Stats Grid */}
           <div className="p-4 sm:p-6 lg:p-8">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-6">
               <StatCard 
@@ -279,7 +284,6 @@ const StudentResults = () => {
               />
             </div>
 
-            {/* Actions - Updated PDF handling */}
             {result.report_card_pdf && (
               <div className="flex flex-wrap gap-3 mb-6">
                 <Button 
@@ -293,7 +297,6 @@ const StudentResults = () => {
               </div>
             )}
 
-            {/* Remarks & Additional Info */}
             <div className="space-y-4">
               {result.class_teacher_remarks && (
                 <div className="bg-blue-50 rounded-xl p-4 border border-blue-200">
@@ -337,7 +340,6 @@ const StudentResults = () => {
           </div>
         </div>
         
-        {/* Subjects Table */}
         {result.course_results?.length > 0 && (
           <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
             <div className="px-4 sm:px-6 py-4 bg-slate-50 border-b border-slate-200">
@@ -529,7 +531,6 @@ const StudentResults = () => {
 
     return (
       <div className="space-y-6">
-        {/* Filter Bar */}
         <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 p-4 sm:p-6 bg-white rounded-2xl border border-slate-200 shadow-sm">
           <div>
             <h3 className="text-lg font-semibold text-slate-900">
@@ -545,7 +546,6 @@ const StudentResults = () => {
           {renderFilters()}
         </div>
 
-        {/* Results Content */}
         {isLoading ? (
           <LoadingSkeleton />
         ) : data?.length > 0 ? (
@@ -564,7 +564,6 @@ const StudentResults = () => {
   return (
     <div className="min-h-screen bg-slate-50">
       <div className="max-w-9xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Header */}
         <div className="mb-8">
           <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-4">
             <div>
@@ -579,7 +578,6 @@ const StudentResults = () => {
           </div>
         </div>
 
-        {/* Error Alert */}
         {error && (
           <Alert className="mb-6 border-red-200 bg-red-50">
             <AlertTriangle className="h-4 w-4" />
@@ -587,7 +585,6 @@ const StudentResults = () => {
           </Alert>
         )}
 
-        {/* Tabs - Updated to match requested style */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="grid w-full grid-cols-2 mb-4 sm:mb-6 bg-gray-100 p-1 rounded-lg h-auto">
             <TabsTrigger 
