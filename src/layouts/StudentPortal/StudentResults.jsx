@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -158,43 +157,6 @@ const StudentResults = () => {
     return gradeColors[grade] || 'bg-slate-100 text-slate-700 border-slate-300';
   };
 
-  // Simplified PDF handler - much more reliable approach
-  const handlePdfAccess = (pdfUrl) => {
-    if (!pdfUrl) {
-      console.error('No PDF URL provided');
-      return;
-    }
-
-    try {
-      // Create a simple anchor element and trigger download/view
-      const link = document.createElement('a');
-      link.href = pdfUrl;
-      link.target = '_blank';
-      link.rel = 'noopener noreferrer';
-      
-      // For mobile devices, always use download attribute
-      if (isMobile) {
-        link.download = `report-card-${Date.now()}.pdf`;
-      }
-      
-      // Add to DOM temporarily
-      document.body.appendChild(link);
-      
-      // Trigger click
-      link.click();
-      
-      // Clean up
-      setTimeout(() => {
-        document.body.removeChild(link);
-      }, 100);
-      
-    } catch (error) {
-      console.error('Error accessing PDF:', error);
-      // Fallback: direct navigation
-      window.location.href = pdfUrl;
-    }
-  };
-
   const StatCard = ({ icon: Icon, title, value, subtitle, bgColor = 'bg-slate-50' }) => (
     <div className={`${bgColor} rounded-xl p-4`}>
       <div className="flex items-center gap-3 mb-3">
@@ -209,7 +171,6 @@ const StudentResults = () => {
       {subtitle && <div className="text-xs text-slate-500">{subtitle}</div>}
     </div>
   );
-
 
   const ResultCard = ({ result }) => {
     const statusDetails = getStatusDetails(result.status);
@@ -293,14 +254,26 @@ const StudentResults = () => {
 
             {result.report_card_pdf && (
               <div className="flex flex-wrap gap-3 mb-6">
-                <Button 
-                  variant="outline" 
-                  onClick={() => handlePdfAccess(result.report_card_pdf)}
-                  className="flex items-center gap-2 bg-white border-slate-300 hover:bg-slate-50"
+                {/* Simple anchor link approach - works across all browsers including Chrome mobile */}
+                <a 
+                  href={result.report_card_pdf}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-white border border-slate-300 rounded-md hover:bg-slate-50 transition-colors duration-200 text-slate-700 font-medium text-sm"
                 >
-                  <Download className="h-4 w-4" />
-                  {isMobile ? 'Download Report Card' : 'View Report Card'}
-                </Button>
+                  {isMobile ? (
+                    <>
+                      <Download className="h-4 w-4" />
+                      Download Report Card
+                    </>
+                  ) : (
+                    <>
+                      <Eye className="h-4 w-4" />
+                      View Report Card
+                    </>
+                  )}
+                  <ExternalLink className="h-3 w-3 opacity-60" />
+                </a>
               </div>
             )}
 
