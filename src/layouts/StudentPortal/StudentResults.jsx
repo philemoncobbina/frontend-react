@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -8,7 +9,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { 
   Calendar, BookOpen, User, Clock, CheckCircle, FileText, Trophy, 
-  Users, CalendarDays, GraduationCap, MessageSquare, AlertTriangle, Download, Eye
+  Users, CalendarDays, GraduationCap, MessageSquare, AlertTriangle, Download, Eye, ExternalLink
 } from 'lucide-react';
 import { studentResultsService } from '../../Services/student-results-service';
 import { getCurrentUser } from '../../Services/studentApi';
@@ -35,28 +36,17 @@ const StudentResults = () => {
     previousClass: '',
     previousTerm: ''
   });
-  const [deviceInfo, setDeviceInfo] = useState({
-    isMobile: false,
-    isChrome: false,
-    isIOS: false,
-    isAndroid: false
-  });
+  const [isMobile, setIsMobile] = useState(false);
 
   useEffect(() => {
-    // Enhanced device detection
-    const userAgent = navigator.userAgent;
-    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(userAgent);
-    const isChrome = /Chrome/i.test(userAgent) && !/Edge|Edg|OPR|Samsung/i.test(userAgent);
-    const isIOS = /iPhone|iPad|iPod/i.test(userAgent);
-    const isAndroid = /Android/i.test(userAgent);
+    // Simple mobile detection
+    const checkIfMobile = () => {
+      return window.innerWidth < 768 || /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    };
     
-    setDeviceInfo({
-      isMobile,
-      isChrome,
-      isIOS,
-      isAndroid
-    });
+    setIsMobile(checkIfMobile());
 
+    // Get user data
     getCurrentUser()
       .then(user => user && setUserData({ class_name: user.class_name || '' }))
       .catch(err => {
@@ -168,92 +158,39 @@ const StudentResults = () => {
     return gradeColors[grade] || 'bg-slate-100 text-slate-700 border-slate-300';
   };
 
-  // Enhanced PDF handler with better Chrome mobile support
-  const handlePdfView = async (pdfUrl) => {
+  // Simplified PDF handler - much more reliable approach
+  const handlePdfAccess = (pdfUrl) => {
     if (!pdfUrl) {
       console.error('No PDF URL provided');
       return;
     }
 
     try {
-      // For Chrome mobile, use direct download approach
-      if (deviceInfo.isMobile && deviceInfo.isChrome && deviceInfo.isAndroid) {
-        // Create a temporary link for download
-        const link = document.createElement('a');
-        link.href = pdfUrl;
-        link.download = `report-card-${Date.now()}.pdf`;
-        link.target = '_blank';
-        link.rel = 'noopener noreferrer';
-        
-        // Add to DOM, click, and remove
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        return;
-      }
-
-      // For iOS devices, use window.open with specific handling
-      if (deviceInfo.isIOS) {
-        const newWindow = window.open();
-        if (newWindow) {
-          newWindow.location.href = pdfUrl;
-        } else {
-          // Fallback for iOS popup blockers
-          window.location.href = pdfUrl;
-        }
-        return;
-      }
-
-      // For desktop and other mobile browsers
-      const newWindow = window.open(pdfUrl, '_blank', 'noopener,noreferrer');
-      
-      // If popup is blocked, try alternative methods
-      if (!newWindow) {
-        // Try using window.location as fallback
-        if (confirm('Popup blocked. Would you like to open the PDF in the current tab?')) {
-          window.open(pdfUrl, '_self');
-        }
-        return;
-      }
-
-      // For desktop browsers, we can safely check if PDF loaded
-      if (!deviceInfo.isMobile) {
-        // Set a timeout to check if PDF failed to load
-        setTimeout(() => {
-          try {
-            // Only check for desktop browsers
-            if (newWindow.location.href === 'about:blank') {
-              newWindow.close();
-              handlePdfDownload(pdfUrl);
-            }
-          } catch (e) {
-            // Cross-origin error is expected and means PDF is loading
-            console.log('PDF is loading (cross-origin restriction is normal)');
-          }
-        }, 3000);
-      }
-
-    } catch (error) {
-      console.error('Error opening PDF:', error);
-      handlePdfDownload(pdfUrl);
-    }
-  };
-
-  // Separate download function for fallback
-  const handlePdfDownload = (pdfUrl) => {
-    try {
+      // Create a simple anchor element and trigger download/view
       const link = document.createElement('a');
       link.href = pdfUrl;
-      link.download = `report-card-${Date.now()}.pdf`;
       link.target = '_blank';
       link.rel = 'noopener noreferrer';
       
+      // For mobile devices, always use download attribute
+      if (isMobile) {
+        link.download = `report-card-${Date.now()}.pdf`;
+      }
+      
+      // Add to DOM temporarily
       document.body.appendChild(link);
+      
+      // Trigger click
       link.click();
-      document.body.removeChild(link);
+      
+      // Clean up
+      setTimeout(() => {
+        document.body.removeChild(link);
+      }, 100);
+      
     } catch (error) {
-      console.error('Error downloading PDF:', error);
-      // Last resort: navigate to PDF URL
+      console.error('Error accessing PDF:', error);
+      // Fallback: direct navigation
       window.location.href = pdfUrl;
     }
   };
@@ -358,11 +295,11 @@ const StudentResults = () => {
               <div className="flex flex-wrap gap-3 mb-6">
                 <Button 
                   variant="outline" 
-                  onClick={() => handlePdfView(result.report_card_pdf)}
+                  onClick={() => handlePdfAccess(result.report_card_pdf)}
                   className="flex items-center gap-2 bg-white border-slate-300 hover:bg-slate-50"
                 >
                   <Download className="h-4 w-4" />
-                  {(deviceInfo.isMobile && deviceInfo.isChrome && deviceInfo.isAndroid) ? 'Download Report Card' : 'View Report Card'}
+                  {isMobile ? 'Download Report Card' : 'View Report Card'}
                 </Button>
               </div>
             )}
