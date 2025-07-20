@@ -253,29 +253,37 @@ const StudentResults = () => {
             </div>
 
             {result.report_card_pdf && (
-              <div className="flex flex-wrap gap-3 mb-6">
-                {/* Simple anchor link approach - works across all browsers including Chrome mobile */}
-                <a 
-                  href={result.report_card_pdf}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-2 px-4 py-2 bg-white border border-slate-300 rounded-md hover:bg-slate-50 transition-colors duration-200 text-slate-700 font-medium text-sm"
-                >
-                  {isMobile ? (
-                    <>
-                      <Download className="h-4 w-4" />
-                      Download Report Card
-                    </>
-                  ) : (
-                    <>
-                      <Eye className="h-4 w-4" />
-                      View Report Card
-                    </>
-                  )}
-                  <ExternalLink className="h-3 w-3 opacity-60" />
-                </a>
-              </div>
-            )}
+  <div className="flex flex-wrap gap-3 mb-6">
+    {/* Primary PDF link with Google Docs fallback for Chrome Mobile */}
+    <a 
+      href={`https://docs.google.com/viewer?url=${encodeURIComponent(result.report_card_pdf)}`}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="inline-flex items-center gap-2 px-4 py-2 bg-white border border-slate-300 rounded-md hover:bg-slate-50 transition-colors duration-200 text-slate-700 font-medium text-sm"
+      onClick={(e) => {
+        // Only use Google Docs fallback if on Chrome Mobile
+        const isChromeMobile = /Android.*Chrome\/[.0-9]* Mobile/i.test(navigator.userAgent);
+        if (!isChromeMobile) {
+          e.preventDefault();
+          window.open(result.report_card_pdf, '_blank');
+        }
+      }}
+    >
+      {isMobile ? (
+        <>
+          <Download className="h-4 w-4" />
+          Download Report Card
+        </>
+      ) : (
+        <>
+          <Eye className="h-4 w-4" />
+          View Report Card
+        </>
+      )}
+      <ExternalLink className="h-3 w-3 opacity-60" />
+    </a>
+  </div>
+)}
 
             <div className="space-y-4">
               {result.class_teacher_remarks && (
