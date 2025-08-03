@@ -46,7 +46,7 @@ const StatsSection = () => {
                   🎓 SCHOOL HIGHLIGHTS
                 </span>
                 <h1 className="font-heading text-5xl xs:text-6xl md:text-7xl font-bold mb-5">
-                  <span>Celebratinggggg</span>
+                  <span>Celebrating</span>
                   <span className="font-serif italic">Our Achievements</span>
                 </h1>
                 <p className="max-w-md text-xl text-gray-500 font-semibold">
