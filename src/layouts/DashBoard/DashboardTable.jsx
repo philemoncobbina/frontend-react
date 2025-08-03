@@ -281,11 +281,11 @@ const DashboardTable = () => {
             <MoreHorizontal className="w-5 h-5" />
           </button>
         </PopoverTrigger>
-        <PopoverContent className="w-36 p-0" align="end">
+        <PopoverContent className="bg-white w-36 p-0" align="end">
           <div className="py-1">
             <button
               onClick={() => handleEditAdmission(admission)}
-              className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+              className="flex  items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
             >
               <Edit2 className="mr-3 text-gray-400 h-4 w-4" /> View/Edit
             </button>

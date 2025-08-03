@@ -25,15 +25,8 @@ import JobDetailspage from './Pages/JobDetailspage';
 import JobApplicationpage from './Pages/JobApplicationpage';
 import JobVacancyPage from './Pages/JobVacancyPage';
 
-import SchoolDashboardPage from './Pages/SchoolDashboardPage';
-import BookListPage from './Pages/BookListPage';
-import ResultsPage from './Pages/ResultsPage';
-
 // Import general auth components
 import { AuthProvider, RequireAuth, AuthModalWrapper } from './Services/RequireAuth';
-
-// Import student-specific auth components
-import { StudentAuthProvider, RequireStudentAuth } from './Services/StudentAuth';
 
 const router = createBrowserRouter([
   {
@@ -43,31 +36,6 @@ const router = createBrowserRouter([
   {
     path: '/about',
     element: <AboutPage />,
-  },
-  
-  {
-    path: '/student-portal',
-    element: (
-      <RequireStudentAuth>
-        <SchoolDashboardPage />
-      </RequireStudentAuth>
-    ),
-  },
-  {
-    path: '/student-portal/results',
-    element: (
-      <RequireStudentAuth>
-        <ResultsPage />
-      </RequireStudentAuth>
-    ),
-  },
-  {
-    path: '/student-portal/booklist',
-    element: (
-      <RequireStudentAuth>
-        <BookListPage />
-      </RequireStudentAuth>
-    ),
   },
   {
     path: '/careers',
@@ -158,12 +126,9 @@ const router = createBrowserRouter([
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
     <HelmetProvider>
-      {/* Wrap with both auth providers - general auth first, then student auth */}
       <AuthProvider>
-        <StudentAuthProvider>
-          <RouterProvider router={router} />
-          <AuthModalWrapper />
-        </StudentAuthProvider>
+        <RouterProvider router={router} />
+        <AuthModalWrapper />
       </AuthProvider>
     </HelmetProvider>
   </React.StrictMode>
