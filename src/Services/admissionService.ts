@@ -1,7 +1,7 @@
 // admissionService.js
 import axios from 'axios';
 
-const API_URL = 'https://api.plvcmonline.uk/api/admissions/'; // Base URL for admissions
+const API_URL = 'http://127.0.0.1:8000/api/admissions/'; // Base URL for admissions
 
 const getAuthHeaders = () => {
   const accessToken = localStorage.getItem('access_token');

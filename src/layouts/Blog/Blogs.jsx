@@ -1,5 +1,4 @@
 import React, { useEffect, useState } from 'react';
-import blogData from '../../data/blogData.json';
 import BlogCard from '../Home/BlogCard';
 import { 
   Pagination, 
@@ -9,75 +8,189 @@ import {
   PaginationNext, 
   PaginationPrevious 
 } from '@/components/ui/pagination';
+import { blogService } from '../../Services/BlogService';
 
 const Blogs = () => {
   const [blogs, setBlogs] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalBlogs, setTotalBlogs] = useState(0);
-  const blogsPerPage = 9; // Show 9 blogs per page (2 large + 7 smaller cards)
+  const blogsPerPage = 9;
 
   useEffect(() => {
-    setBlogs(blogData);
-    setTotalBlogs(blogData.length);
-  }, []);
+    const fetchBlogs = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        
+        const response = await blogService.getPublishedPosts({
+          page: currentPage,
+          page_size: blogsPerPage,
+        });
+        
+        // Ensure response data is valid
+        if (response && response.results) {
+          setBlogs(response.results || []);
+          setTotalBlogs(response.count || 0);
+        } else {
+          setBlogs([]);
+          setTotalBlogs(0);
+        }
+      } catch (err) {
+        console.error('Error fetching blogs:', err);
+        setError('Failed to load blog posts. Please try again later.');
+        setBlogs([]);
+        setTotalBlogs(0);
+      } finally {
+        setLoading(false);
+      }
+    };
 
-  // Get current blogs for pagination
+    fetchBlogs();
+  }, [currentPage]);
+
+  // Use safe default values and ensure blogs is always an array
+  const blogsArray = Array.isArray(blogs) ? blogs : [];
+  
+  // Calculate pagination indices for display count
   const indexOfLastBlog = currentPage * blogsPerPage;
   const indexOfFirstBlog = indexOfLastBlog - blogsPerPage;
-  const currentBlogs = blogs.slice(indexOfFirstBlog, indexOfLastBlog);
   
   // Split current blogs into first two (larger display) and remaining (smaller display)
-  const firstTwoBlogs = currentBlogs.slice(0, 2);
-  const remainingBlogs = currentBlogs.slice(2);
+  const firstTwoBlogs = blogsArray.slice(0, 2);
+  const remainingBlogs = blogsArray.slice(2);
   
-  const totalPages = Math.ceil(blogs.length / blogsPerPage);
+  const totalPages = Math.ceil(totalBlogs / blogsPerPage);
 
-  // Change page
-  const paginate = (pageNumber) => setCurrentPage(pageNumber);
-  const goToNextPage = () => setCurrentPage(prev => Math.min(prev + 1, totalPages));
-  const goToPrevPage = () => setCurrentPage(prev => Math.max(prev - 1, 1));
-
+  // Calculate display counts (same as old version)
   const startCount = indexOfFirstBlog + 1;
   const endCount = Math.min(indexOfLastBlog, totalBlogs);
 
+  // Change page functions
+  const goToNextPage = () => setCurrentPage(prev => Math.min(prev + 1, totalPages));
+  const goToPrevPage = () => setCurrentPage(prev => Math.max(prev - 1, 1));
+  const paginate = (pageNumber) => setCurrentPage(pageNumber);
+
+  // Helper function to prepare blog props for BlogCard
+  const prepareBlogProps = (blog) => {
+    // Ensure blog object has all required properties
+    if (!blog) return null;
+    
+    // Generate the blog URL using slug instead of ID
+    const blogUrl = blog.slug ? `/blog/${blog.slug}/` : '#';
+    
+    // Generate excerpt from the first text block
+    const getExcerpt = () => {
+      if (blog.text_blocks && blog.text_blocks.length > 0) {
+        const firstBlock = blog.text_blocks[0]?.content || '';
+        // Remove HTML tags if any and trim to 150 characters
+        const text = firstBlock.replace(/<[^>]*>/g, '');
+        const maxLength = 150;
+        
+        if (text.length <= maxLength) return text;
+        return text.substring(0, maxLength).trim() + '...';
+      }
+      return blog.excerpt || '';
+    };
+    
+    return {
+      // Use slug for URL generation
+      id: blog.slug || blog.id || '', // Keep id as fallback, but slug is preferred
+      slug: blog.slug || '',
+      url: blogUrl, // Add URL property for navigation
+      image: blog.image ? blogService.getImageUrl(blog.image) : '',
+      categories: Array.isArray(blog.categories) 
+        ? blog.categories.map(cat => cat?.name || '').filter(Boolean)
+        : [],
+      title: blog.title || 'Untitled',
+      author: blog.author?.name || 'Unknown Author',
+      authorImage: blog.author?.profile_image 
+        ? blogService.getAuthorImageUrl(blog.author.profile_image)
+        : '',
+      date: blog.published_date || blog.created_at || '',
+      excerpt: getExcerpt(), // Use local helper function instead of removed service method
+    };
+  };
+
+  // Render loading state
+  if (loading) {
+    return (
+      <div style={{ marginTop: '5rem' }} className="mx-auto max-w-screen-lg px-4">
+        <div className="text-center text-gray-600 py-12">
+          <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-current border-r-transparent align-[-0.125em] motion-reduce:animate-[spin_1.5s_linear_infinite]"></div>
+          <p className="mt-4">Loading blog posts...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Render error state
+  if (error) {
+    return (
+      <div style={{ marginTop: '5rem' }} className="mx-auto max-w-screen-lg px-4">
+        <div className="text-center text-red-600 py-12">
+          <p>{error}</p>
+          <button 
+            onClick={() => {
+              setCurrentPage(1);
+              setError(null);
+            }} 
+            className="mt-4 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
+          >
+            Try Again
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div style={{ marginTop: '5rem' }} className="mx-auto max-w-screen-lg px-4">
-      {blogs.length > 0 && (
+      {/* Results count - same as old version */}
+      {blogsArray.length > 0 && totalBlogs > 0 && (
         <div className="text-gray-600 mb-6 text-center">
           Showing {startCount}-{endCount} of {totalBlogs} Blog posts
         </div>
       )}
 
-      {/* First two blogs (larger display) */}
+      {/* First two blogs (larger display) - same as old version */}
       <div className="flex flex-wrap -mx-2">
-        {firstTwoBlogs.map(blog => (
-          <div key={blog.id} className="w-full md:w-1/2 px-2 mb-4">
-            <BlogCard {...blog} />
-          </div>
-        ))}
+        {firstTwoBlogs.map(blog => {
+          const blogProps = prepareBlogProps(blog);
+          return blogProps ? (
+            <div key={blog.slug || blog.id || `blog-${Math.random()}`} className="w-full md:w-1/2 px-2 mb-4">
+              <BlogCard {...blogProps} />
+            </div>
+          ) : null;
+        })}
       </div>
 
-      {/* Remaining blogs (smaller display) */}
+      {/* Remaining blogs (smaller display) - same as old version */}
       <div className="flex flex-wrap -mx-2">
-        {remainingBlogs.map(blog => (
-          <div key={blog.id} className="w-full md:w-1/3 px-2 mb-4">
-            <BlogCard {...blog} />
-          </div>
-        ))}
+        {remainingBlogs.map(blog => {
+          const blogProps = prepareBlogProps(blog);
+          return blogProps ? (
+            <div key={blog.slug || blog.id || `blog-${Math.random()}`} className="w-full md:w-1/3 px-2 mb-4">
+              <BlogCard {...blogProps} />
+            </div>
+          ) : null;
+        })}
       </div>
 
-      {/* No blogs message */}
-      {blogs.length === 0 && (
+      {/* No blogs message - same as old version */}
+      {blogsArray.length === 0 && !loading && (
         <div className="text-center text-gray-600 py-8">
           No blog posts available at the moment.
         </div>
       )}
 
-      {/* Pagination */}
-      {blogs.length > 0 && (
+      {/* Pagination - EXACT SAME UI as old version */}
+      {blogsArray.length > 0 && totalPages > 1 && (
         <div className="mt-12 mb-8">
           <Pagination>
             <PaginationContent>
+              {/* Previous button */}
               <PaginationItem>
                 <PaginationPrevious 
                   onClick={goToPrevPage} 
@@ -138,6 +251,7 @@ const Blogs = () => {
                 </PaginationItem>
               )}
               
+              {/* Next button */}
               <PaginationItem>
                 <PaginationNext 
                   onClick={goToNextPage} 

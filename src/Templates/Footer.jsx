@@ -26,7 +26,7 @@ const Footer = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      const response = await axios.post('https://api.plvcmonline.uk/api/subscriptions/', {
+      const response = await axios.post('http://127.0.0.1:8000/api/subscriptions/', {
         full_name: full_name,
         email: email,
       });
