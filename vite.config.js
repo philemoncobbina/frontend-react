@@ -3,10 +3,10 @@ import react from "@vitejs/plugin-react";
 import path from "path";
 
 export default defineConfig(({ mode }) => {
-  // Load env variables
   const env = loadEnv(mode, process.cwd(), "");
 
   return {
+    base: "/", // 👈 IMPORTANT for SPA routing
     plugins: [react()],
     resolve: {
       alias: {
@@ -14,7 +14,7 @@ export default defineConfig(({ mode }) => {
       },
     },
     define: {
-      "process.env": env, // Use the loaded env variables
+      "process.env": env,
     },
   };
 });
