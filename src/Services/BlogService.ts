@@ -134,4 +134,4 @@ class BlogService {
 }
 
 // Create and export a singleton instance
-export const blogService = new BlogService('http://127.0.0.1:8000');
+export const blogService = new BlogService('https://backend-django-5-clix.onrender.com');
