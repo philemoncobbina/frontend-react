@@ -1,30 +1,35 @@
+// my-project/src/Services/ChangePassword.ts
 import axios from 'axios';
+import { API_URL } from './http';
+import { endLocalSession } from './Login';
 
-const api = axios.create({
-  baseURL: 'https://api.cobbina.uk/api',
-});
-
-const getAuthHeaders = (): { Authorization: string } => {
-  const accessToken = localStorage.getItem('access_token');
-  return { Authorization: `Bearer ${accessToken}` };
-};
+// No auth headers and no axios.create() instance here:
+// - the HttpOnly cookies are sent by the browser,
+// - the CSRF header and the silent refresh come from the interceptors that initAuth() installs
+//   on the default axios object. An instance made with axios.create() does NOT inherit them.
 
 export const getUserDetails = async () => {
-  const headers = getAuthHeaders();
-  const response = await api.get('/user-detail/', { headers });
+  const response = await axios.get(`${API_URL}user-detail/`);
   return response.data;
 };
 
 export const sendVerificationCode = (email: string) =>
-  api.post('/change-password-request/', { email }, { headers: getAuthHeaders() });
+  axios.post(`${API_URL}change-password-request/`, { email });
 
 export const verifyCode = (email: string, verification_code: string) =>
-  api.post('/verify-change-password-code/', { email, verification_code }, { headers: getAuthHeaders() });
+  axios.post(`${API_URL}verify-change-password-code/`, { email, verification_code });
 
-export const changePassword = (data: {
+export const changePassword = async (data: {
   email: string;
   verification_code: string;
   old_password: string;
   new_password: string;
-}) =>
-  api.post('/change-password/', data, { headers: getAuthHeaders() });
+}) => {
+  const response = await axios.post(`${API_URL}change-password/`, data);
+
+  // The server ends every session when the password changes (and clears this device's cookies),
+  // so drop the local "logged in" hint too. The caller should send the user to /login.
+  endLocalSession();
+
+  return response;
+};

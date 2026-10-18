@@ -1,8 +1,13 @@
+// my-project/src/main.jsx
+
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { createBrowserRouter, RouterProvider } from 'react-router-dom';
 import { HelmetProvider } from 'react-helmet-async';
 import './index.css';
+import { initAuth } from './Services/Login';   // NEW
+
+initAuth();   // NEW: must run before anything renders
 
 import HomePage from './Pages/HomePage';
 import AboutPage from './Pages/AboutPage';
@@ -24,6 +29,7 @@ import RaiseTicketPage from './Pages/RaiseTicketPage';
 import JobDetailspage from './Pages/JobDetailspage';
 import JobApplicationpage from './Pages/JobApplicationpage';
 import JobVacancyPage from './Pages/JobVacancyPage';
+import ResendVerificationLinkPage from './Pages/ResendVerificationLinkPage';
 
 // Import general auth components
 import { AuthProvider, RequireAuth, AuthModalWrapper } from './Services/RequireAuth';
@@ -80,6 +86,10 @@ const router = createBrowserRouter([
   {
     path: '/admission',
     element: <AdmissionPage />,
+  },
+  {
+    path: '/resend-verification-email',
+    element: <ResendVerificationLinkPage />,
   },
   {
     path: '/blog',

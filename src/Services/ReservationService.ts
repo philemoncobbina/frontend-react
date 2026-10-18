@@ -1,18 +1,29 @@
-import axios from 'axios';
+// my-project/src/Services/ReservationService.ts
 
-const postReservation = async (reservationData: any) => {
+import axios from 'axios';
+import { API_URL } from './http';
+
+const RESERVATIONS_URL = `${API_URL}reservations/`;
+
+type ReservationPayload = Record<string, unknown> | FormData;
+
+const FALLBACK_MESSAGE = 'An error occurred while submitting the reservation.';
+
+// Public endpoint. If the visitor happens to be logged in, the interceptors attach the CSRF
+// header automatically, so the request is not rejected.
+const postReservation = async (reservationData: ReservationPayload) => {
   try {
-    const response = await axios.post('https://api.cobbina.uk/api/reservations/', reservationData);
+    const response = await axios.post(RESERVATIONS_URL, reservationData);
     return response;
-  } catch (error) {
-    // Check if error response exists and contains data
+  } catch (error: any) {
+    // The API answers with { detail } or { error } (for example when rate limited).
     if (error.response && error.response.data) {
-      console.error("API Error Response:", error.response.data);
-      throw new Error(error.response.data.detail || "An error occurred while submitting the reservation.");
-    } else {
-      console.error("API Error:", error.message);
-      throw new Error("An error occurred while submitting the reservation.");
+      console.error('API Error Response:', error.response.data);
+      throw new Error(error.response.data.detail || error.response.data.error || FALLBACK_MESSAGE);
     }
+
+    console.error('API Error:', error.message);
+    throw new Error(FALLBACK_MESSAGE);
   }
 };
 

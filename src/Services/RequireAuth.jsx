@@ -1,14 +1,26 @@
-import React, { createContext, useState, useContext, useEffect } from 'react';
+// my-project/src/Services/RequireAuth.jsx
+
+import React, {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
 import { Navigate } from 'react-router-dom';
-import { isLoggedIn } from './Login';
+import { isAuthenticated as hasLocalSession, isLoggedIn } from './Login';
 import { Lock } from 'lucide-react';
 
 // Create Authentication Context
 const AuthContext = createContext({
   isAuthenticated: false,
+  isLoading: true,
   showAuthModal: false,
   setShowAuthModal: () => {},
-  checkAuthStatus: () => {}
+  checkAuthStatus: async () => false,
+  attemptedProtectedRoute: false,
+  setAttemptedProtectedRoute: () => {},
 });
 
 // Authentication Provider Component
@@ -18,43 +30,48 @@ export const AuthProvider = ({ children }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [attemptedProtectedRoute, setAttemptedProtectedRoute] = useState(false);
 
-  const checkAuthStatus = async () => {
+  // Asks isLoggedIn(): free for visitors who never logged in, cached for a few minutes otherwise.
+  const checkAuthStatus = useCallback(async () => {
+    let loggedIn = false;
+
     try {
       const result = await isLoggedIn();
-      setIsAuthenticated(result.loggedIn);
-      setIsLoading(false);
+      loggedIn = Boolean(result.loggedIn);
     } catch (error) {
       console.error('Auth check failed', error);
-      setIsLoading(false);
-      setIsAuthenticated(false);
     }
-  };
+
+    setIsAuthenticated(loggedIn);
+    setIsLoading(false);
+    return loggedIn;
+  }, []);
 
   useEffect(() => {
     checkAuthStatus();
-  }, []);
+  }, [checkAuthStatus]);
 
   useEffect(() => {
     // Reset modal state when authentication status changes.
     if (isAuthenticated) {
       setShowAuthModal(false);
-      setAttemptedProtectedRoute(false);  // Reset after successful login
+      setAttemptedProtectedRoute(false); // Reset after successful login
     }
   }, [isAuthenticated]);
 
-  return (
-    <AuthContext.Provider value={{
+  const value = useMemo(
+    () => ({
       isAuthenticated,
       showAuthModal,
       setShowAuthModal,
       checkAuthStatus,
       isLoading,
       attemptedProtectedRoute,
-      setAttemptedProtectedRoute
-    }}>
-      {children}
-    </AuthContext.Provider>
+      setAttemptedProtectedRoute,
+    }),
+    [isAuthenticated, showAuthModal, checkAuthStatus, isLoading, attemptedProtectedRoute]
   );
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
 
 // Authentication Modal Component
@@ -70,18 +87,18 @@ export const AuthModal = () => {
           </div>
           <h2 className="text-3xl font-bold text-gray-800 mb-4">Secure Access</h2>
           <p className="text-gray-500 mb-6 leading-relaxed">
-            To protect your account and maintain confidentiality, please log in to proceed. 
+            To protect your account and maintain confidentiality, please log in to proceed.
             This ensures only authorized personnel can access the system.
           </p>
           <div className="flex space-x-4">
-            <button 
-              onClick={() => setShowAuthModal(false)}  
+            <button
+              onClick={() => setShowAuthModal(false)}
               className="flex-1 py-3 px-4 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition duration-300 font-medium"
             >
               Cancel
             </button>
-            <a 
-              href="/login" 
+            <a
+              href="/login"
               className="flex-1 py-3 px-4 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition duration-300 font-semibold"
             >
               Log In
@@ -90,36 +107,60 @@ export const AuthModal = () => {
         </div>
       </div>
     </div>
-
   );
 };
 
-// Modified RequireAuth Component
+// Route guard
 export const RequireAuth = ({ children }) => {
-  const { 
-    isAuthenticated, 
-    isLoading, 
-    setShowAuthModal, 
-    setAttemptedProtectedRoute 
+  const {
+    isAuthenticated,
+    isLoading,
+    checkAuthStatus,
+    setShowAuthModal,
+    setAttemptedProtectedRoute,
   } = useContext(AuthContext);
 
-  useEffect(() => {
-    if (!isAuthenticated && !isLoading) {
-      setAttemptedProtectedRoute(true);
-      setShowAuthModal(true);  // Show the modal only if not logged in
-    }
-  }, [isAuthenticated, isLoading, setShowAuthModal, setAttemptedProtectedRoute]);
+  // The provider checks once at startup. If the user logged in or out since then, the context
+  // and the local session disagree, so check again before deciding (instead of trusting stale state).
+  const localSession = hasLocalSession();
+  const [rechecked, setRechecked] = useState(false);
+  const needsRecheck = !isLoading && !rechecked && isAuthenticated !== localSession;
 
-  if (isLoading) {
+  useEffect(() => {
+    if (!needsRecheck) return undefined;
+
+    let active = true;
+    checkAuthStatus().finally(() => {
+      if (active) setRechecked(true);
+    });
+
+    return () => {
+      active = false;
+    };
+  }, [needsRecheck, checkAuthStatus]);
+
+  useEffect(() => {
+    if (rechecked && isAuthenticated === localSession) setRechecked(false); // ready for the next change
+  }, [rechecked, isAuthenticated, localSession]);
+
+  const signedIn = isAuthenticated && localSession;
+  const waiting = isLoading || needsRecheck;
+
+  useEffect(() => {
+    if (!waiting && !signedIn) {
+      setAttemptedProtectedRoute(true);
+      setShowAuthModal(true); // Show the modal only if not logged in
+    }
+  }, [waiting, signedIn, setShowAuthModal, setAttemptedProtectedRoute]);
+
+  if (waiting) {
     return <div className="text-center mt-10">Loading...</div>;
   }
 
-  if (!isAuthenticated) {
-    console.log('RequireAuth - User not logged in. Redirecting to homepage.');
-    return <Navigate to="/" />;
+  if (!signedIn) {
+    return <Navigate to="/" replace />;
   }
 
-  console.log('RequireAuth - User logged in. Rendering component.');
   return <>{children}</>;
 };
 

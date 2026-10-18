@@ -1,12 +1,14 @@
+// my-project/src/Services/ContactService.ts
 import axios from 'axios';
+import { API_URL } from './http';
 
-const API_URL = 'https://api.cobbina.uk/api/contacts/';
+const CONTACTS_URL = `${API_URL}contacts/`;
 
-export const submitContactForm = async (data) => {
-  try {
-    const response = await axios.post(`${API_URL}`, data);
-    return response.data;
-  } catch (error) {
-    throw error;
-  }
+type ContactPayload = Record<string, unknown>;
+
+// Public endpoint. If the visitor happens to be logged in, the interceptors attach the CSRF
+// header automatically, so the request is not rejected.
+export const submitContactForm = async (data: ContactPayload) => {
+  const response = await axios.post(CONTACTS_URL, data);
+  return response.data;
 };
