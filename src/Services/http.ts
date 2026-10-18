@@ -11,7 +11,7 @@ declare module 'axios' {
 
 // Development: VITE_API_URL=/api/ (goes through the Vite proxy, so cookies are same-origin).
 // Production : VITE_API_URL=https://api.cobbina.uk/api/ (also the fallback below).
-const rawUrl: string = import.meta.env.VITE_API_URL ?? 'http://localhost:8000/api/';
+const rawUrl: string = import.meta.env.VITE_API_URL ?? 'https://api.cobbina.uk/api/';
 export const API_URL = rawUrl.replace(/\/*$/, '/');
 
 // Endpoint paths, relative to API_URL (they must match authapp/urls.py).
